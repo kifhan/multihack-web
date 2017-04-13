@@ -25792,6 +25792,7 @@ function Multihack (config) {
     })
   })
 
+  self.embed = util.getParameterByName('embed') || null
   self.roomID = util.getParameterByName('room') || null
   self.hostname = config.hostname
 
@@ -25818,17 +25819,24 @@ function Multihack (config) {
   })
 
   Interface.removeOverlay()
-  Interface.getProject(function (project) {
-    if (!project) {
-      self._initRemote()
-    } else {
-      Interface.showOverlay()
-      FileSystem.loadProject(project, function (tree) {
-        Interface.treeview.render(tree)
+  if (self.embed) {
+    self._initRemote()
+    self._remote.on('gotPeer', function () {
+      self._remote.requestProject()
+    })
+  } else {
+    Interface.getProject(function (project) {
+      if (!project) {
         self._initRemote()
-      })
-    }
-  })
+      } else {
+        Interface.showOverlay()
+        FileSystem.loadProject(project, function (tree) {
+          Interface.treeview.render(tree)
+          self._initRemote()
+        })
+      }
+    })
+  }
 }
 
 Multihack.prototype._initRemote = function () {
@@ -25836,7 +25844,7 @@ Multihack.prototype._initRemote = function () {
   
   function onRoom(data) {
     self.roomID = data.room
-    window.history.pushState('Multihack', 'Multihack Room '+self.roomID, '?room='+self.roomID);
+    window.history.pushState('Multihack', 'Multihack Room '+self.roomID, '?room='+self.roomID + '&embed='+self.embed);
     self.nickname = data.nickname
     self._remote = new Remote(self.hostname, self.roomID, self.nickname)
     
@@ -25889,6 +25897,9 @@ Multihack.prototype._initRemote = function () {
     self._remote.on('provideFile', function (data) {
       FileSystem.getFile(data.filePath).write(data.content)
       Interface.treeview.rerender(FileSystem.getTree())
+      if (!Editor.getWorkingFile()) {
+        Editor.open(data.filePath)
+      }
     })
     self._remote.on('lostPeer', function (peer) {
       Interface.alert('Connection Lost', 'Your connection to "'+peer.metadata.nickname+'" has been lost.')
@@ -25900,10 +25911,16 @@ Multihack.prototype._initRemote = function () {
   }
 
   // Random starting room (to be changed) or from query
-  if (!self.roomID) {
+  if (!self.roomID && !self.embed) {
     Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
-  } else {
+  } else if (!self.embed) {
     Interface.getNickname(self.roomID, onRoom)
+  } else {
+    Interface.embedMode()
+    onRoom({
+      room: self.roomID || Math.random().toString(36).substr(2),
+      nickname: 'Guest'
+    })
   }
 }
 
@@ -25946,10 +25963,10 @@ function Interface () {
 
   // Setup sidebar
   var sidebar = document.getElementById('sidebar')
-  var collapsed = false
+  self.collapsed = false
   document.getElementById('collapsesidebar').addEventListener('click', function () {
-    collapsed = !collapsed
-    if (collapsed) {
+    self.collapsed = !self.collapsed
+    if (self.collapsed) {
       sidebar.className = sidebar.className + ' collapsed'
     } else {
       sidebar.className = sidebar.className.replace('collapsed', '')
@@ -26119,6 +26136,14 @@ Interface.prototype.alertHTML = function (title, message, cb) {
   alertModal.open()
 }
 
+Interface.prototype.embedMode = function () {
+  var self = this
+  
+  self.collapsed = true
+  document.querySelector('body').className+=' embed'
+  document.querySelector('#sidebar').className = 'sidebar theme-light collapsed'
+}
+
 Interface.prototype.showNetwork = function (peers, room, nop2p, mustForward) {
 
   var modal = new Modal('network', {
@@ -26172,6 +26197,7 @@ Interface.prototype.showNetwork = function (peers, room, nop2p, mustForward) {
 
 Interface.prototype.removeOverlay = function (msg, cb) {
   document.getElementById('overlay').style.display = 'none'
+  document.getElementById('modal').style.display = 'none'
 }
 
 Interface.prototype.showOverlay = function (msg, cb) {
@@ -26534,6 +26560,7 @@ function RemoteManager (hostname, room, nickname) {
       nop2p: data.nop2p
     })
     if (data.nop2p) self.mustForward++
+    self._emit('gotPeer', data)
   })
   
   self._socket.on('peer-leave', function (data) {
@@ -26608,6 +26635,10 @@ RemoteManager.prototype._initP2P = function (room, nickname) {
     peer.wire.on('deleteFile', self._emit.bind(self, 'deleteFile'))
     peer.wire.on('requestProject', function () {
       self._emit('requestProject', peer.id)
+    })
+    
+    peer.on('connect', function () {
+      self._emit('gotPeer', peer)   
     })
     
     peer.on('close', function () {
