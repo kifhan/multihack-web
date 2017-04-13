@@ -6305,8 +6305,8 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":365}],298:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../usr/local/lib/node_modules/watchify/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../../usr/local/lib/node_modules/watchify/node_modules/is-buffer/index.js":365}],298:[function(require,module,exports){
 /**
  * cuid.js
  * Collision-resistant UID generator for browsers and node.
@@ -25999,15 +25999,20 @@ Interface.prototype.getProject = function (cb) {
     title: 'Load Project',
     message: 'Upload a zip file containing a project.'
   })
-  projectModal.on('done', function (e) {
-    projectModal.close()
-    if (cb) cb(e.inputs[0].files[0])
-  })
   projectModal.on('cancel', function () {
     projectModal.close()
     if (cb) cb(null)
   })
   projectModal.open()
+  
+  var input = projectModal.el.querySelector('input[type="file"]')
+  projectModal.el.querySelector('#file-button').addEventListener('click', function () {
+    input.click()
+  })
+  input.addEventListener('change', function () {
+    projectModal.close()
+    cb(input.files[0])
+  })
 }
 
 Interface.prototype.getRoom = function (roomID, cb) {
@@ -26194,7 +26199,8 @@ var dict = {}
 dict['file'] =
     '<h1>{{title}}</h1><br>' +
     '<p>{{{message}}}</p>' +
-    '<input class="go-button modal-input" type="file">' +
+    '<input style="display:none" type="file">' +
+    '<button id="file-button" class="go-button">Upload</button>' +
     '<button class="no-button">Skip</button>'
 
 dict['input'] =
