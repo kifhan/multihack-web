@@ -60,16 +60,12 @@ There is a limit on the public server, but not if you run [your own instance](ht
 
 To run your own instance, see [multihack-server](https://github.com/RationalCoding/multihack-server).  
 
-## Introducing version 2.0!
+## Introducing version 3.0!
 
-V2 is a complete rewrite of the old multihack-web (still available on the v1 branch)  
+- Network has changed from server forwarding to 100% peer-to-peer! Blazing fast speeds (especially over LANs), and unlimited project sizes!
 
-- Greatly improved performance and code style.  
+- Check out [the new protocol](https://github.com/RationalCoding/multihack-wire) if you're wondering why it's so much faster!
 
-- Compatibility with multihack-brackets.  
-
-- Swapped PeerJS for simple-peer, for more reliable voice calls.  
-
-- Removed the social feature in favour of private rooms.  
+- General performance and quality improvements.
 
 
