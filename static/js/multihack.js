@@ -11986,11 +11986,11 @@ Multihack.prototype._initRemote = function () {
         FileSystem.yfs = y.share.dir_tree;
         FileSystem.yfs.observe(function(event) {
           var file_path = event.name;
-          var is_from_remote = !FileSystem.exists(file_path)
+          var file_not_exists = !FileSystem.exists(file_path)
 
-          console.log('yfs callback ' + file_path + ' t: ' + event.type)
+          console.log('yfs callback on: ' + file_path + ' type: ' + event.type)
 
-          if (is_from_remote) {
+          if (file_not_exists) {
             if(event.type == 'add') { 
               if(typeof event.value == 'string') {
                 FileSystem.mkdir(file_path)
@@ -12000,7 +12000,6 @@ Multihack.prototype._initRemote = function () {
             } else if(event.type == 'update') { // rename file or dir
             } else if(event.type == 'delete') {
             }
-            
           }else {
             if(event.type == 'add') { 
             } else if(event.type == 'update') { // rename file or dir
@@ -12017,32 +12016,30 @@ Multihack.prototype._initRemote = function () {
           Interface.treeview.rerender(FileSystem.getTree())
           if (event.value instanceof Y.Text.typeDefinition.class) {
             if(typeof FileSystem.getFile(file_path).ytext == 'undefined') {
-              setTimeout(function ytcallback(e){
-                var newfile = FileSystem.getFile(file_path)
-                newfile.ytext = FileSystem.yfs.get(file_path)
-                if(typeof newfile.ytext == 'undefined') setTimeout(ytcallback,10); 
-              },10);
+              var newfile = FileSystem.getFile(file_path)
+              newfile.ytext = event.value;
             }
           }
         })
 
-        // peer network monitor binding
-        // y.share.peers.push({
-        //   'user_id': y.connector.userId,
-        //   'name': self.nickname
+        //peer network monitor binding
+        y.share.peers.push([{
+          'user_id': y.connector.userId,
+          'name': self.nickname
+        }])
+        // y.share.peers.observe(function(e){
         // })
-        // // y.share.peers.observe(function(e){
-        // // })
-        // y.webrtc.onUserEvent(function(e) {
-        //   if(e.action == 'userLeft') {
-        //     var ypeers = y.share.peers.toArray()
-        //     for(var i=0;i<ypeers.length;i++) {
-        //       if(e.user == ypeers[i]['user_id']) {
-        //         y.share.peers.delete(i)
-        //       }
-        //     }
-        //   }
-        // })
+        y.connector.onUserEvent(function(e) {
+          console.log('connector event ' + y.share.peers.toArray())
+          if(e.action == 'userLeft') {
+            var ypeers = y.share.peers.toArray()
+            for(var i=0;i<ypeers.length;i++) {
+              if(e.user == ypeers[i]['user_id']) {
+                y.share.peers.delete(i)
+              }
+            }
+          }
+        })
     });
   }
 
