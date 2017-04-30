@@ -135,7 +135,7 @@
 Multihack({
     hostname: ''
 })
-var userdata = User;
+var userdata = null;
 
 // This is called with the results from from FB.getLoginStatus().
 function statusChangeCallback(response) {
@@ -151,6 +151,7 @@ function statusChangeCallback(response) {
     } else {
         // The person is not logged into your app or we are unable to tell.
         document.getElementById('status').innerHTML = User.guest_user_el;
+        userdata = User;
         // document.getElementById('status').setAttribute('style','display:none;')
     }
 }
