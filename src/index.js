@@ -14,8 +14,6 @@ function Multihack (config) {
 
   config = config || {}
 
-
-
   Interface.on('openFile', function (e) {
     Editor.open(e.path)
   })
