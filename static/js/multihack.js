@@ -11889,7 +11889,7 @@ Reply.prototype.removeReply = function (robj) {
     var self = this
     //'user_request':User.user_id
     if(typeof robj.user_request != 'undefined') {
-        if(robj.user_id == robj.user_request) return;
+        if(robj.user_id != robj.user_request) return;
     }
     for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
         if(self.lineWidgets[j].node.getAttribute("id") == "reply-" + robj.reply_id) {

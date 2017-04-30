@@ -228,6 +228,7 @@ var userobj = {};
 function testAPI() {
     console.log('Welcome!  Fetching your information.... ');
     FB.api('/me', function(response) {
+        if(typeof response.name == 'undefined') return;
         console.log('Successful login for: ' + response.name);
         document.getElementById('status').innerHTML =
         '<div id="status-name" style="display:inline-block">' + response.name + '</div>';
