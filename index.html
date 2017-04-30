@@ -151,7 +151,6 @@ function statusChangeCallback(response) {
     } else {
         // The person is not logged into your app or we are unable to tell.
         document.getElementById('status').innerHTML = User.guest_user_el;
-        userdata = User;
         // document.getElementById('status').setAttribute('style','display:none;')
     }
 }
@@ -192,6 +191,8 @@ window.fbAsyncInit = function() {
 
 };
 
+var userobj = {};
+
 // Load the SDK asynchronously
 (function(d, s, id) {
     var js, fjs = d.getElementsByTagName(s)[0];
@@ -210,16 +211,17 @@ function testAPI() {
         document.getElementById('status').innerHTML =
         '<div style="display:inline-block">' + response.name + '</div>';
         // '<div style="display:inline-block"><img src="' + response.picture + '"></div>';
-        userdata.user_id = response.id
-        userdata.user_name = response.name
+        userobj.user_id = response.id
+        userobj.user_name = response.name
         // userdata.user_picture = response.picture
         loadDoc("http://graph.facebook.com/"+ response.id +"/?fields=picture&type=large",function (xhttp) {
             var response = JSON.parse(xhttp.responseText)
-            userdata.user_picture = response.picture.data.url
+            userobj.user_picture = response.picture.data.url
             var pic = document.createElement('div');
             pic.setAttribute("style","display:inline-block")
-            pic.innerHTML = "<img src=" + userdata.user_picture + " width='32px'>";
+            pic.innerHTML = "<img src=" + userobj.user_picture + " width='32px'>";
             document.getElementById('status').appendChild(pic)
+            window.setUserData(userobj)
         })
     });
 }

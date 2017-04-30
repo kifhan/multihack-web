@@ -8,8 +8,13 @@ function User () {
     self.user_picture = './static/img/User-Profile.png'
     self.guest_user_el = '<div style="display:inline-block"><img width="32px" src="'+ self.user_picture +'"></div>'
     window.document.getElementById('status').innerHTML = self.guest_user_el;
+    window.setUserData = self.setData
 }
 
-// User.prototype.setReplies = function (yarraydata) {
-// }
+User.prototype.setData = function (data) {
+    self.user_id = data.user_id
+    self.user_name = data.user_name
+    self.user_picture = data.user_picture
+}
+
 module.exports = new User()
