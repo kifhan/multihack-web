@@ -500,13 +500,13 @@ span.mobile-hide{
 
 @media only screen and (min-width: 768px) {
     .workspace {
-        left: 170px;
+        left: 200px;
     }
     .sidebar {
-      width: 170px;
+      width: 200px;
     }
     .sidebar .panel-topbar {
-        width: 160px;
+        width: 190px;
     }
     .icon-collapse > span{
         display: inline-block;
