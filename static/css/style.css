@@ -25,11 +25,12 @@ body {
     overflow: hidden;
     font-size: 14px;
     background: black;
-}
-
-* {
     font-family: Monaco;
 }
+
+/** {
+    font-family: Monaco;
+}*/
 
 .nav {
     height: 60px;

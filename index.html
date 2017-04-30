@@ -27,6 +27,21 @@
         .nav .logo {
             margin-left: 10px;
         }
+        #status-name {
+            vertical-align: middle;
+            height: 40px;
+            margin-right: 9px;
+        }
+        #fb-login-button {
+            float:right;margin-top:15px;
+        }
+        .CodeMirror {
+            font-family: Monaco;
+        }
+        .CodeMirror-linewidget {
+            color: black;
+            font-family: Arial, Helvetica, sans-serif;
+        }
     </style>
 </head>
 <body class="theme-dark theme-font-secondary">
@@ -51,7 +66,7 @@
             <span>Peers</span>
         </button>
         <div id="status" style="margin-left:12px;float:right;margin-top:15px;"></div>
-        <div style="float:right;margin-top:15px;"><fb:login-button scope="public_profile,email" onlogin="checkLoginState();"></fb:login-button></div>
+        <div id="fb-login-button"><fb:login-button scope="public_profile,email" onlogin="checkLoginState();"></fb:login-button></div>
         <!--<button id="fb-login" title="FB login" class="icon-button icon-collapse go-button" onclick="javascript:login();">
             <span>FB login</span>
         </button>-->
@@ -212,10 +227,11 @@ function testAPI() {
     FB.api('/me', function(response) {
         console.log('Successful login for: ' + response.name);
         document.getElementById('status').innerHTML =
-        '<div style="display:inline-block">' + response.name + '</div>';
+        '<div id="status-name" style="display:inline-block">' + response.name + '</div>';
         // '<div style="display:inline-block"><img src="' + response.picture + '"></div>';
         userobj.user_id = response.id
         userobj.user_name = response.name
+        document.getElementById('fb-login-button').setAttribute("style","display:none;")
         FB.api("/"+userobj.user_id+"/picture",
             function (response) {
                 if (response && !response.error) {
