@@ -11888,8 +11888,9 @@ Reply.prototype.removeReplyInput = function () {
 Reply.prototype.removeReply = function (robj) {
     var self = this
     //'user_request':User.user_id
-    if(typeof robj.user_request != 'undefined' && robj.user_id == robj.user_request)
-
+    if(typeof robj.user_request != 'undefined') {
+        if(robj.user_id == robj.user_request) return;
+    }
     for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
         if(self.lineWidgets[j].node.getAttribute("id") == "reply-" + robj.reply_id) {
             self.cm.removeLineWidget(self.lineWidgets[j])
