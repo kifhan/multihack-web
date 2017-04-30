@@ -12620,7 +12620,7 @@ Multihack.prototype._initRemote = function () {
     // })
   // }
     onRoom({
-      room: self.roomID || "rellat-dev-v0.0.1",
+      room: self.roomID || "rellat-dev-v0.1",
       nickname: 'Guest'
     })
 }
