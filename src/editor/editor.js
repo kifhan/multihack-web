@@ -4,6 +4,7 @@ var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var FileSystem = require('./../filesystem/filesystem')
 var util = require('./../filesystem/util')
+var Reply = require('./reply')
 
 inherits(Editor, EventEmitter)
 
@@ -28,9 +29,9 @@ function Editor () {
     autoCloseTags: true
   }
 
-  self._cm = CodeMirror.fromTextArea(textArea, options)
+  self.cm = CodeMirror.fromTextArea(textArea, options)
 
-  self._cm.on('keyup', function (editor, event) {
+  self.cm.on('keyup', function (editor, event) {
     if (!ExcludedIntelliSenseTriggerKeys[(event.keyCode || event.which).toString()]) {
       CodeMirror.commands.autocomplete(editor, null, { completeSingle: false })
     }
@@ -38,10 +39,15 @@ function Editor () {
 
   self._workingFile = null
   self._mutex = false
-  // self._cm.on('change', self._onchange.bind(self))
-  self._cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
+  self.cm.on('change', Reply.linewidgetEvent.bind(Reply))
+  self.cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
 
   self._theme = null
+  
+}
+
+Editor.prototype.getcm = function () {
+  return this.cm.getDoc().getEditor()
 }
 
 // Editor.prototype._onchange = function (cm, change) {
@@ -84,12 +90,12 @@ Editor.prototype.highlight = function (filePath, ranges) {
   var self = this
   if (!self._workingFile || filePath !== self._workingFile.path) return
   
-  self._cm.getAllMarks().forEach(function (mark) {
+  self.cm.getAllMarks().forEach(function (mark) {
     mark.clear()
   })
   
   ranges.forEach(function (range) {
-    self._cm.markText(range.head, range.anchor, {
+    self.cm.markText(range.head, range.anchor, {
       className: 'remoteSelection'
     })
   })
@@ -102,7 +108,7 @@ Editor.prototype.highlight = function (filePath, ranges) {
 //   if (!self._workingFile || filePath !== self._workingFile.path) {
 //     FileSystem.getFile(filePath).doc.replaceRange(change.text, change.to, change.from)
 //   } else {
-//     self._cm.replaceRange(change.text, change.to, change.from)
+//     self.cm.replaceRange(change.text, change.to, change.from)
 //   }
 //   self._mutex = false
 // }
@@ -110,7 +116,10 @@ Editor.prototype.highlight = function (filePath, ranges) {
 Editor.prototype.open = function (filePath) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) return
-  if (self._workingFile && util.getViewMapping(filePath) === 'text') self._workingFile.ytext.unbindCodeMirror(self._cm)
+  if (self._workingFile && util.getViewMapping(filePath) === 'text') {
+    self._workingFile.ytext.unbindCodeMirror(self.cm)
+    
+  }
   self._workingFile = FileSystem.get(filePath)
   document.getElementById('working-file').innerHTML = self._workingFile.name
   switch (self._workingFile.viewMapping) {
@@ -124,18 +133,26 @@ Editor.prototype.open = function (filePath) {
       document.querySelector('.image-wrapper').style.display = 'none'
       function ytextcallback(e) {
         if(typeof self._workingFile.ytext == 'undefined') { setTimeout(ytextcallback,10); return; }
-        self._cm.swapDoc(new CodeMirror.Doc(self._workingFile.ytext.toString(), util.pathToMode(filePath)))
+        self.cm.swapDoc(new CodeMirror.Doc(self._workingFile.ytext.toString(), util.pathToMode(filePath)))
         self._workingFile.ytext.unbindCodeMirrorAll()
-        self._workingFile.ytext.bindCodeMirror(self._cm)
+        self._workingFile.ytext.bindCodeMirror(self.cm)
+        Reply.setReplyPanel(self.cm)
+        setTimeout(yarraycallback,10)
       }
       setTimeout(ytextcallback,10)
+
+      function yarraycallback(e) {
+        var replies = FileSystem.replyMap.get(filePath)
+        if(typeof replies == 'undefined') { setTimeout(yarraycallback,10); return; }
+        Reply.setReplies(filePath,self)
+      }
       break
   }
 }
 
 Editor.prototype.close = function () {
   var self = this
-  if(self._workingFile) self._workingFile.ytext.unbindCodeMirror(self._cm)
+  if(self._workingFile) self._workingFile.ytext.unbindCodeMirror(self.cm)
   self._workingFile = null
   document.getElementById('working-file').innerHTML = ''
   document.querySelector('.editor-wrapper').style.display = 'none'

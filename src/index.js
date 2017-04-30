@@ -2,7 +2,8 @@ var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
 var Editor = require('./editor/editor')
 var util = require('./filesystem/util')
-
+var User = require('./auth/user')
+var Reply = require('./editor/reply')
 
 // var DEFAULT_HOSTNAME = 'https://quiet-shelf-57463.herokuapp.com'
 var MAX_FORWARDING_SIZE = 5*1000*1000 // 5mb limit for non-p2p connections (validated by server)
@@ -24,6 +25,7 @@ function Multihack (config) {
     if (created) {
       Interface.treeview.addFile(e.parentElement, FileSystem.get(e.path))
       FileSystem.yfs.set(e.path,Y.Text)
+      FileSystem.replyMap.set(e.path,Y.Array)
       Editor.open(e.path)
     }
   })
@@ -42,6 +44,7 @@ function Multihack (config) {
       Interface.treeview.remove(e.parentElement, file)
       FileSystem.delete(e.path)
       FileSystem.yfs.delete(e.path)
+      FileSystem.replyMap.delete(e.path)
     })
   })
 
@@ -56,6 +59,7 @@ function Multihack (config) {
       }
       FileSystem.delete(workingPath)
       FileSystem.yfs.delete(workingPath)
+      FileSystem.replyMap.delete(workingPath)
       Editor.close()
     })
   })
@@ -76,22 +80,24 @@ function Multihack (config) {
   })
 
   Interface.removeOverlay()
-  if (self.embed) {
+  // if (self.embed) {
+  if (true) {
     self._initRemote()
-  } else {
-    Interface.getProject(function (project) {
-      if (!project) {
-        self._initRemote()
-      } else {
-        self.providedProject = true
-        Interface.showOverlay()
-        FileSystem.loadProject(project, function (tree) {
-          Interface.treeview.render(tree)
-          self._initRemote()
-        })
-      }
-    })
+  // } else {
+  //   Interface.getProject(function (project) {
+  //     if (!project) {
+  //       self._initRemote()
+  //     } else {
+  //       self.providedProject = true
+  //       Interface.showOverlay()
+  //       FileSystem.loadProject(project, function (tree) {
+  //         Interface.treeview.render(tree)
+  //         self._initRemote()
+  //       })
+  //     }
+  //   })
   }
+  window.document.getElementById('save').setAttribute('style','display:none;')
 }
 
 Multihack.prototype._initRemote = function () {
@@ -101,6 +107,7 @@ Multihack.prototype._initRemote = function () {
     self.roomID = data.room
     window.history.pushState('Multihack', 'Multihack Room '+self.roomID, '?room='+self.roomID + (self.embed ? '&embed=true' : ''));
     self.nickname = data.nickname
+    User.user_name = data.nickname
     
     // initialize a shared object. This function call returns a promise!
     Y({
@@ -115,7 +122,7 @@ Multihack.prototype._initRemote = function () {
     share: {
         dir_tree: 'Map', // key: data.filePath, value: y_obj_id
         //code_editor: 'Text', // y.share.code_editor is of type Y.Text
-        //cm_reply: 'Array', // { auth_id, line_num, order_num, level, value }
+        cm_reply: 'Map', 
         // chat: 'Array', // { auth_id, value }
         peers: 'Array' // { user_id, auth_id, name, state, selection}
     }
@@ -144,13 +151,11 @@ Multihack.prototype._initRemote = function () {
             if(event.type == 'add') { 
             } else if(event.type == 'update') { // rename file or dir
             } else if(event.type == 'delete') {
-              if(event.type == 'delete') {
-                var parentElement = Interface.treeview.getParentElement(file_path)
-                if (parentElement) {
-                  Interface.treeview.remove(parentElement, FileSystem.get(file_path))
-                }
-                FileSystem.delete(file_path)
+              var parentElement = Interface.treeview.getParentElement(file_path)
+              if (parentElement) {
+                Interface.treeview.remove(parentElement, FileSystem.get(file_path))
               }
+              FileSystem.delete(file_path)
             }
           }
           Interface.treeview.rerender(FileSystem.getTree())
@@ -161,6 +166,25 @@ Multihack.prototype._initRemote = function () {
             }
           }
         })
+
+        FileSystem.replyMap = y.share.cm_reply;
+        // FileSystem.replyMap.observe(function(event) {
+        //   if(!FileSystem.exists(event.name)) {
+        //     if(event.type == 'add') { 
+        //       Reply.setReplies(event.value)
+        //     }
+        //   }else {
+        //     if(event.type == 'add' && event.name == Editor._workingFile.path) {
+        //       event.value.unobserve(Reply.observe)
+        //       event.value.observe(Reply.observe)
+        //     }
+        //   }
+
+        //   if(event.type == 'add') { 
+        //   } else if(event.type == 'update') { // rename file or dir
+        //   } else if(event.type == 'delete') {
+        //   }
+        // })
 
         //peer network monitor binding
         y.share.peers.push([{
@@ -183,17 +207,21 @@ Multihack.prototype._initRemote = function () {
   }
 
   // Random starting room (to be changed) or from query
-  if (!self.roomID && !self.embed) {
-    Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
-  } else if (!self.embed) {
-    Interface.getNickname(self.roomID, onRoom)
-  } else {
-    Interface.embedMode()
+  // if (!self.roomID && !self.embed) {
+  //   Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
+  // } else if (!self.embed) {
+  //   Interface.getNickname(self.roomID, onRoom)
+  // } else {
+    // Interface.embedMode()
+    // onRoom({
+    //   room: self.roomID || Math.random().toString(36).substr(2),
+    //   nickname: 'Guest'
+    // })
+  // }
     onRoom({
-      room: self.roomID || Math.random().toString(36).substr(2),
+      room: self.roomID || "rellat-dev-v0.0.1",
       nickname: 'Guest'
     })
-  }
 }
 
 module.exports = Multihack

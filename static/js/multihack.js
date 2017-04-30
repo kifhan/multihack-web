@@ -9742,7 +9742,7 @@ function localstorage() {
 }
 
 }).call(this,require('_process'))
-},{"./debug":3,"_process":20}],3:[function(require,module,exports){
+},{"./debug":3,"_process":22}],3:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -11236,7 +11236,7 @@ P2PGraph.prototype.getLinkIndex = function (source, target) {
   return -1
 }
 
-},{"d3":1,"debug":2,"events":19,"inherits":4,"throttleit":8}],8:[function(require,module,exports){
+},{"d3":1,"debug":2,"events":21,"inherits":4,"throttleit":8}],8:[function(require,module,exports){
 module.exports = throttle;
 
 /**
@@ -11271,12 +11271,29 @@ function throttle (func, wait) {
 }
 
 },{}],9:[function(require,module,exports){
+
+function User () {
+    var self = this
+    if (!(self instanceof User)) return new User()
+
+    self.user_id = 'guest'
+    self.user_name = 'guest'
+    self.user_picture = './static/img/User-Profile.png'
+    self.guest_user_el = '<div style="display:inline-block"><img width="32px" src="'+ self.user_picture +'"></div>'
+    window.document.getElementById('status').innerHTML = self.guest_user_el;
+}
+
+// User.prototype.setReplies = function (yarraydata) {
+// }
+module.exports = new User()
+},{}],10:[function(require,module,exports){
 /* globals CodeMirror */
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var FileSystem = require('./../filesystem/filesystem')
 var util = require('./../filesystem/util')
+var Reply = require('./reply')
 
 inherits(Editor, EventEmitter)
 
@@ -11301,9 +11318,9 @@ function Editor () {
     autoCloseTags: true
   }
 
-  self._cm = CodeMirror.fromTextArea(textArea, options)
+  self.cm = CodeMirror.fromTextArea(textArea, options)
 
-  self._cm.on('keyup', function (editor, event) {
+  self.cm.on('keyup', function (editor, event) {
     if (!ExcludedIntelliSenseTriggerKeys[(event.keyCode || event.which).toString()]) {
       CodeMirror.commands.autocomplete(editor, null, { completeSingle: false })
     }
@@ -11311,10 +11328,15 @@ function Editor () {
 
   self._workingFile = null
   self._mutex = false
-  // self._cm.on('change', self._onchange.bind(self))
-  self._cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
+  self.cm.on('change', Reply.linewidgetEvent.bind(Reply))
+  self.cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
 
   self._theme = null
+  
+}
+
+Editor.prototype.getcm = function () {
+  return this.cm.getDoc().getEditor()
 }
 
 // Editor.prototype._onchange = function (cm, change) {
@@ -11357,12 +11379,12 @@ Editor.prototype.highlight = function (filePath, ranges) {
   var self = this
   if (!self._workingFile || filePath !== self._workingFile.path) return
   
-  self._cm.getAllMarks().forEach(function (mark) {
+  self.cm.getAllMarks().forEach(function (mark) {
     mark.clear()
   })
   
   ranges.forEach(function (range) {
-    self._cm.markText(range.head, range.anchor, {
+    self.cm.markText(range.head, range.anchor, {
       className: 'remoteSelection'
     })
   })
@@ -11375,7 +11397,7 @@ Editor.prototype.highlight = function (filePath, ranges) {
 //   if (!self._workingFile || filePath !== self._workingFile.path) {
 //     FileSystem.getFile(filePath).doc.replaceRange(change.text, change.to, change.from)
 //   } else {
-//     self._cm.replaceRange(change.text, change.to, change.from)
+//     self.cm.replaceRange(change.text, change.to, change.from)
 //   }
 //   self._mutex = false
 // }
@@ -11383,7 +11405,10 @@ Editor.prototype.highlight = function (filePath, ranges) {
 Editor.prototype.open = function (filePath) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) return
-  if (self._workingFile && util.getViewMapping(filePath) === 'text') self._workingFile.ytext.unbindCodeMirror(self._cm)
+  if (self._workingFile && util.getViewMapping(filePath) === 'text') {
+    self._workingFile.ytext.unbindCodeMirror(self.cm)
+    
+  }
   self._workingFile = FileSystem.get(filePath)
   document.getElementById('working-file').innerHTML = self._workingFile.name
   switch (self._workingFile.viewMapping) {
@@ -11397,18 +11422,26 @@ Editor.prototype.open = function (filePath) {
       document.querySelector('.image-wrapper').style.display = 'none'
       function ytextcallback(e) {
         if(typeof self._workingFile.ytext == 'undefined') { setTimeout(ytextcallback,10); return; }
-        self._cm.swapDoc(new CodeMirror.Doc(self._workingFile.ytext.toString(), util.pathToMode(filePath)))
+        self.cm.swapDoc(new CodeMirror.Doc(self._workingFile.ytext.toString(), util.pathToMode(filePath)))
         self._workingFile.ytext.unbindCodeMirrorAll()
-        self._workingFile.ytext.bindCodeMirror(self._cm)
+        self._workingFile.ytext.bindCodeMirror(self.cm)
+        Reply.setReplyPanel(self.cm)
+        setTimeout(yarraycallback,10)
       }
       setTimeout(ytextcallback,10)
+
+      function yarraycallback(e) {
+        var replies = FileSystem.replyMap.get(filePath)
+        if(typeof replies == 'undefined') { setTimeout(yarraycallback,10); return; }
+        Reply.setReplies(filePath,self)
+      }
       break
   }
 }
 
 Editor.prototype.close = function () {
   var self = this
-  if(self._workingFile) self._workingFile.ytext.unbindCodeMirror(self._cm)
+  if(self._workingFile) self._workingFile.ytext.unbindCodeMirror(self.cm)
   self._workingFile = null
   document.getElementById('working-file').innerHTML = ''
   document.querySelector('.editor-wrapper').style.display = 'none'
@@ -11474,7 +11507,509 @@ var ExcludedIntelliSenseTriggerKeys = {
   '220': 'backslash',
   '222': 'quote'
 }
-},{"./../filesystem/filesystem":12,"./../filesystem/util":13,"events":19,"inherits":4}],10:[function(require,module,exports){
+},{"./../filesystem/filesystem":14,"./../filesystem/util":15,"./reply":11,"events":21,"inherits":4}],11:[function(require,module,exports){
+/* global Y, CodeMirror */
+var FileSystem = require('./../filesystem/filesystem')
+var Editor = require('./editor')
+var Util = require('./../filesystem/util')
+var User = require('./../auth/user')
+
+function Reply() {
+    var self = this
+    if (!(self instanceof Reply)) return new Reply()
+
+    self.currentReplies = undefined
+    self.lineWidgets = null
+    // self.replies = undefined // Y-Array로 댓글 오브젝트를 저장하는 배열이다. 
+    // reply db를 연결할 때 - 반복문으로 댓글을 올린다.
+    // reply db연결을 끊을 때 - cm에서 doc이 끊어지면(swap) line widget이 제거된다.
+    self.reinputs = null // 댓글입력노드를 저장하는 배열이다. 
+    // reply      { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, content }
+    // replyInput { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, input_content }
+    self.replyPanel = null
+    self.cm = null
+    self._mutex = true
+    self._sync = false
+    self.yarrayobserve = null
+    self.timeticks = null
+    self.timeouts = null
+}
+
+Reply.prototype.setReplies = function (filePath, editor) {
+    var self = this
+    self._mutex = true
+    self._sync = false
+    self.currentReplies = FileSystem.replyMap.get(filePath)
+    self.lineWidgets = []
+    self.reinputs = []
+    self.cm = editor.cm
+    if(self.timeticks) {
+        for(var j=0;j<self.timeticks.length;j++){
+            clearInterval(self.timeticks[j])
+        }
+    }
+    self.timeticks = []
+    if(self.timeouts) {
+        for(var j=0;j<self.timeouts.length;j++){
+            clearInterval(self.timeouts[j])
+        }
+    }
+    self.timeouts = []
+    // self.cm.on("change", self.linewidgetEvent.bind(self,event))
+    // self.cm.off("redraw", self.linewidgetEvent.bind(self))
+
+    if(self.yarrayobserve) self.currentReplies.unobserve(self.yarrayobserve)
+
+// console.log('set reply on open: ' + self.currentReplies.toArray().toString())
+// console.log("is this yarray?: " + (self.currentReplies instanceof Y.Array.typeDefinition.class))
+
+    var repliesarray = self.currentReplies.toArray()
+    for (var i = 0; i < repliesarray.length; i++) {
+        self.addReply(repliesarray[i])
+    }
+    self._mutex = false
+
+
+//     self.currentReplies.observe(function(event) {
+//         var self = this
+// console.log("is this yarray observing?: " + (self.currentReplies instanceof Y.Array.typeDefinition.class))
+// console.log("is this yarray gets self?: " + (self instanceof Reply))
+//         self.observe(event)
+//     })
+    self.yarrayobserve = self.observe.bind(self)
+    self.currentReplies.observe()
+}
+
+Reply.prototype.linewidgetEvent = function (cm, event) {
+    var self = this
+    if(self._mutex) return
+    var changeobjs =[]
+    var repliesarray = self.currentReplies.toArray()
+    for (var j = 0; j < self.lineWidgets.length; j++) {
+        for (var i = repliesarray.length-1; i >= 0; i--) {
+            // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + repliesarray[i].reply_id)
+            if (self.lineWidgets[j].node.getAttribute("id") == "reply-" + repliesarray[i].reply_id) {
+                if (self.cm.getLineNumber(self.lineWidgets[j].line) != repliesarray[i].line_num) {
+                    console.log("line_num needs to be change: " + repliesarray[i].reply_id)
+                    repliesarray[i].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
+                    // changeobjs.push(JSON.stringify(repliesarray[i]))
+                    // self.removeReply({"reply_id":repliesarray[i].reply_id, "sync": true})
+                    // self.currentReplies.delete(i, 1)
+                    // // self.addReply(repliesarray[i])
+                }
+            }
+        }
+        for (var k = 0; k < self.reinputs.length; k++) {
+            // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
+            if (self.lineWidgets[j].node.getAttribute("id") == "reply-input-container-" + self.reinputs[k].reply_id) {
+                // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
+                if (self.cm.getLineNumber(self.lineWidgets[j].line) != self.reinputs[k].line_num) {
+                    self.reinputs[k].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
+                }
+            }
+        }
+    }
+    for (var i = changeobjs.length-1; i >= 0; i--) {
+        self.addReply(changeobjs[i])
+    }
+
+    self._sync = true
+    self.currentReplies.delete(0,repliesarray.length)
+    self.currentReplies.push(repliesarray)    
+    self.timeouts.push(setTimeout(function() {
+        self._sync = false
+    }, 100))
+    // self.removeReplyInput();
+}
+
+Reply.prototype.addReplyInput = function (line, level, order) {
+    var self = this
+    self.removeReplyInput(); // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
+
+    level = typeof level == 'undefined' ? 0 : level
+    var instertorder = typeof order == 'undefined' ? 0 : order
+
+    var rcount = 0;
+    // if(typeof order == 'undefined') {
+    if(true){
+        var repliesarray = self.currentReplies.toArray()
+        for(var i=0;i<repliesarray.length;i++) {
+            if(repliesarray[i].line_num == line) {
+                rcount++
+            }
+        }
+        if(typeof order == 'undefined') order = rcount
+    }
+    console.log('input at count num: '+ rcount + ' order:'+order)
+
+    // reply      { user_id, user_name, user_picture, reply_id, level, order, line_num, content }
+    // replyInput { user_id, user_name, user_picture, reply_id, level, order, line_num, text_id }
+
+    // 댓글 입력 노드를 삽입하는 함수이다.
+    // line은 에디터 줄의 번호나 lineHandle 오브젝트, 혹은 이미 등록된 댓글 노드의 id가 될 수 있다.
+    var reply_id = self.genId()
+    var replyinputdom = document.createElement("DIV"); // 삽입할 노드를 생성한다.
+    replyinputdom.setAttribute("class", "reply-box");
+    replyinputdom.setAttribute("id", "reply-input-container-" + reply_id);
+    replyinputdom.innerHTML = '<div class="reply" style="margin:0;padding:5px; background-color:#f6f7f9;">' +
+        '<div class="reply-img" style="padding:5px; display:inline-block;">' +
+        '<img src="' + User.user_picture + '" width="32px"></div>' +
+        '<div class="reply-text-container" style="margin:0;padding-top:5px; vertical-align: top; display:inline-block;line-height:1.4;width: calc(100% - 60px);min-height:37px;">' +
+        '<div class="reply-input-box" style="border:1px solid #aaa; background:#ffffff;">' +
+        '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" tabindex="-1">' +
+        '<span style="color:#888;">답글 달기...</span></div></div></div></div>';
+    // 미리 작성한 html 템플레이트를 사용한다. https://thimbleprojects.org/mohawkduck/194618/
+
+    function oarc() {
+        var clickdom = document.getElementById("reply-input-" + reply_id)
+        clickdom.addEventListener("keydown", self.onAddReply.bind(self, window.event, reply_id));
+        clickdom.addEventListener("focus", self.replyinputfocus.bind(window.event));
+        clickdom.focus()
+    }
+    self.timeouts.push(setTimeout(oarc, 100))
+
+    // var widget = self.getWidget(line);
+    // // self.currentReplies 배열을 뒤져서 이미 생성된 line widget을 가져온다.
+    // if (typeof widget == 'undefined') {
+    //     // 해당 줄에 이미 생성된 line widget이 없는 경우
+    //     // make a widget
+    //     widget = self.cm.addLineWidget(line, replyinputdom);
+    // }else {
+    //     // put input in the widget
+    //     if(order == 0) widget.node.appendChild(replyinputdom);
+    //     var rc = widget.node.children
+    //     if(order >= rc.length) widget.node.appendChild(replyinputdom);
+    //     else widget.node.insertBefore(rc[order],replyinputdom)
+    //     widget.changed();
+    // }
+    if(order >= rcount) self.lineWidgets.push(self.cm.addLineWidget(line, replyinputdom))
+    else self.lineWidgets.push(self.cm.addLineWidget(line, replyinputdom, { insertAt: instertorder }))
+
+    self.reinputs.push({
+        // self.reinputs 배열에 새로 만든 댓글입력노드를 삽입한다.
+        user_id: User.user_id,
+        user_name: User.user_name,
+        user_picture: User.user_picture,
+        reply_id: reply_id,
+        insert_time: "",
+        level: level,
+        order: order,
+        line_num: line,
+        input_content: ''
+    });
+}
+
+Reply.prototype.replyinputfocus = function (e) {
+    var self = this
+    // 댓글입력노드에 텍스트 커서가 붙으면 호출된다.
+    if (e.target.textContent != "답글 달기...") return;
+    // 안내문구가 있을 경우 안내문구를 삭제한다.
+    e.target.innerHTML = '';
+    while (e.target.firstChild) {
+        e.target.removeChild(e.target.firstChild);
+    }
+}
+
+Reply.prototype.onAddReply = function (event, reply_id) {
+    var self = this
+    event = window.event;
+    // console.log('reply keycode: '+event.keyCode +' or ' + event.which)
+    // 댓글입력노드에서 키를 누르면 호출된다. enter 키를 감지하면 댓글노드를 삽입한다.
+    // event는 onkeydown 이벤트에서 전달된 이벤트 오브젝트이다.
+    // reply_id는 해당 노드 id의 번호이다.
+    if (event.keyCode == 13 || event.which == 13) {
+        // event.keyCode == 13 은 enter 키이다. event.which는 브라우져 호환성을 위해 삽입했다.
+        // 댓글 입력 내용을 가져올 노드이다.
+        var targetinput;
+        for (var i = 0; i < self.reinputs.length; ++i) {
+            // self.reinputs 배열에서 댓글입력노드를 찾는다.
+            if (self.reinputs[i].reply_id == reply_id) {
+                targetinput = self.reinputs[i];
+            }
+        }
+        if (!targetinput) return;
+        targetinput.input_content = document.getElementById("reply-input-" + reply_id).textContent
+        targetinput.insert_time = new Date();
+        self.addReply(targetinput)
+    }
+}
+
+Reply.prototype.addReply = function (replyobj) {
+    var self = this
+    self.removeReplyInput();
+    // reply      { user_id, user_name, user_picture, reply_id, level, order, line_num, content }
+    // replyInput { user_id, user_name, user_picture, reply_id, level, order, line_num, input_content }
+    var textcontent, reply_id
+    if (typeof replyobj.input_content == 'undefined') {
+        textcontent = replyobj.content
+        reply_id = replyobj.reply_id
+    } else {
+        textcontent = replyobj.input_content
+        reply_id = self.genId()
+    }
+
+    var replydom = document.createElement("DIV");
+    replydom.setAttribute("class", "reply-box");
+    replydom.setAttribute("id", "reply-" + reply_id);
+    replydom.innerHTML = '<div class="reply" style="margin:0;padding:5px; background-color:#f6f7f9;border-top: 1px solid #aaaaff;">' +
+        '<div class="reply-img" style="padding:5px; display:inline-block;">' +
+        '<img src="' + replyobj.user_picture + '" width="32px"></div>' +
+        '<div class="reply-text-container" style="margin:0;padding-top:5px; vertical-align: top; display:inline-block;line-height:1.4;max-width: calc(100% - 60px);word-wrap:break-word;">' +
+        '<a style="color:#365899;margin-right:5px;font-weight:bold;text-decoration:none;" href="#">' +
+        '<span>' + replyobj.user_name + '</span></a>' +
+        '<span>' + textcontent + '</span>' +
+        '<div>'+
+        //'<a style="text-decoration:none;color:#365899;" href="#"><span>Like</span></a> · ' +
+        //'<a id="reply-again-' + reply_id + '" style="text-decoration:none;color:#365899;" href="#"><span>Reply</span></a> · ' +
+        '<a id="reply-remove-' + reply_id + '" style="text-decoration:none;color:#365899;" href="#"><span>Remove</span></a> · ' +
+        //'<a style="color:#888888;text-decoration:none;" href="#">'+
+        '<span id="reply-time-'+ reply_id +'" style="color:#888888;">Just now</span>'+
+        //'</a>'+
+        '</div></div>' +
+        '<div class="reply-button" style="color:#888888;float:right;visibility: hidden;">x</div></div>';
+    // var widget = self.getWidget(replyobj.line_num)
+    // if(typeof widget == 'undefined') {
+    //     widget = self.cm.addLineWidget(replyobj.line_num, replydom);
+    // }else {
+    //     // put input in the widget
+    //     if(replyobj.order == 0) widget.node.appendChild(replydom);
+    //     var rc = widget.node.children
+    //     if(replyobj.order >= rc.length) widget.node.appendChild(replydom);
+    //     else widget.node.insertBefore(rc[replyobj.order],replydom)
+    //     widget.changed();
+    // }
+
+    if(replyobj.order >= self.currentReplies.toArray().length-1) self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom))
+    else self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom, { insertAt: replyobj.order }))
+
+    console.log("reply inserted at: "+(replyobj.order)+" of total: "+self.currentReplies.toArray().length)
+
+    function oarcd() {
+        var clickdom = document.getElementById("reply-remove-" + reply_id)
+        clickdom.addEventListener("click", self.removeReply.bind(self,{'reply_id':reply_id,'user_id': replyobj.user_id,'user_request':User.user_id}));
+    }
+    self.timeouts.push(setTimeout(oarcd, 50))
+
+    
+    function timecheck() {
+        var replytime = document.getElementById("reply-time-" + reply_id)
+        if(!replytime) return;
+        var inittime = new Date(replyobj.insert_time)
+        replytime.innerHTML = self.getTimeDifference(new Date(),inittime);
+    }
+    self.timeticks.push(setInterval(timecheck,3000))
+
+    // function oarcd() {
+    //     var clickdom = document.getElementById("reply-again-" + reply_id)
+    //     clickdom.replyevent = clickdom.addEventListener("click", self.addReplyInput.bind(self, replyobj.line_num, 
+    //     replyobj.level > 1 ? 1 : replyobj.level + 1, // fix level if it's bigger then 1.
+    //     replyobj.order + 1));
+    // }
+    // setTimeout(oarcd, 50)
+
+
+// // 1. reply의 순서를 조정
+//     var repliesarray = self.currentReplies.toArray()
+//     var lw = self.cm.getDoc().getLineHandle(replyobj.line_num).widgets
+//     // console.log(JSON.stringify(lw))
+//     if(lw) {
+//         for (var j = 0; j < lw.length ; j++) {
+//             for (var i = 0; i < repliesarray.length; i++) {
+//                 if(lw[j].node.getAttribute("id") == "reply-" + repliesarray[i].reply_id) {
+//                     repliesarray[i].order = j
+//     // 2. eventlistener의 바인딩을 조정
+//                     var clickdom = document.getElementById("reply-again-" + repliesarray[i].reply_id)
+//                     if(typeof clickdom.replyevent != 'undefined') clickdom.removeEventListener("click", clickdom.replyevent)
+//                     clickdom.replyevent = clickdom.addEventListener("click", self.addReplyInput.bind(self, replyobj.line_num, 
+//                     replyobj.level > 1 ? 1 : replyobj.level + 1, // fix level if it's bigger then 1.
+//                     replyobj.order + 1));
+//                 }
+//             }
+//         }
+//     }
+
+    if (typeof replyobj.input_content == 'undefined') return // 외부 정보를 sync하는 경우. reply input 창에서 올때만 text_id가 있다.
+
+    // 댓글입력노드를 하단에 삽입한다. 댓글입력노드가 2단계까지만 달리도록 고정한다.
+    // self.addReplyInput(replyobj.line_num, replyobj.level, replyobj.order + 1);
+
+console.log("is this yarray inserting?: " + (self.currentReplies instanceof Y.Array.typeDefinition.class))
+    // 댓글입력노드가 달린 container노드에 댓글노드를 삽입한다.
+    self.currentReplies.push([{
+        // self.currentReplies 배열에 댓글노드를 삽입한다.
+        user_id: replyobj.user_id,
+        user_name: replyobj.user_name,
+        user_picture: replyobj.user_picture,
+        reply_id: reply_id,
+        insert_time: replyobj.insert_time,
+        level: replyobj.level,
+        order: replyobj.order,
+        line_num: replyobj.line_num /*self.cm.doc.getLineNumber(widget.line)*/,
+        content: textcontent
+    }]);
+}
+
+Reply.prototype.getTimeDifference = function (current, previous) {
+    var msPerMinute = 60 * 1000;
+    var msPerHour = msPerMinute * 60;
+    var msPerDay = msPerHour * 24;
+    var msPerMonth = msPerDay * 30;
+    var msPerYear = msPerDay * 365;
+    var elapsed = current - previous;
+    if (elapsed < msPerMinute) { return Math.floor(elapsed/1000) + ' seconds ago'; }
+    else if (elapsed < msPerHour) { return Math.floor(elapsed/msPerMinute) + ' minutes ago'; }
+    else if (elapsed < msPerDay ) { return Math.floor(elapsed/msPerHour ) + ' hours ago'; }
+    else if (elapsed < msPerMonth) { return Math.floor(elapsed/msPerDay) + ' days ago'; }
+    else if (elapsed < msPerYear) { return 'approximately ' + Math.floor(elapsed/msPerMonth) + ' months ago'; }
+    else { return Math.floor(elapsed/msPerYear ) + ' years ago'; }
+}
+
+Reply.prototype.removeReplyInput = function () {
+    var self = this
+    // self.reinputs 배열에 있는 댓글입력노드를 dom과 배열에서 제거한다.
+    // console.log("line widget count: " + self.lineWidgets.length)
+    for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
+        for (var i = 0; i < self.reinputs.length; ++i) {
+            // console.log('delete line widget: ' + self.cm.getLineNumber(self.lineWidgets[j].line) + ' ' + self.reinputs[i].line_num)
+            if (self.lineWidgets[j].node.getAttribute("id") == "reply-input-container-" + self.reinputs[i].reply_id) {
+                self.cm.removeLineWidget(self.lineWidgets[j])
+                self.lineWidgets.splice(j, 1)
+            }
+        }
+    }
+    self.reinputs.length = 0;
+}
+Reply.prototype.removeReply = function (robj) {
+    var self = this
+    //'user_request':User.user_id
+    if(typeof robj.user_request != 'undefined' && robj.user_id == robj.user_request)
+
+    for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
+        if(self.lineWidgets[j].node.getAttribute("id") == "reply-" + robj.reply_id) {
+            self.cm.removeLineWidget(self.lineWidgets[j])
+            self.lineWidgets.splice(j, 1)
+            var repliesarray = self.currentReplies.toArray()
+            for (var i = repliesarray.length-1; i >= 0 ; i--) {
+                if(repliesarray[i].reply_id == robj.reply_id) {
+                   self.currentReplies.delete(i, 1)
+                }
+            }
+        }
+    }
+}
+
+// Reply.prototype.getWidget = function (linehandle) {
+//   var self = this
+//   // 댓글노드 혹은 댓글입력노드가 삽입되는 line widget 오브젝트를 가져오는 함수이다.
+//   // linehandle에서 line no를 가지고 오거나, line no에서 linehandle을 가지고 온다.
+//   // 조건문 구조는 https://codemirror.net/lib/codemirror.js 5283줄의 changeLine 함수 참고
+//   // 관련 함수: doc.getLineNumber(handle: LineHandle) → integer
+//   var no = linehandle, line = linehandle;
+//   if (typeof linehandle == "number") { line = self.cm.getDoc().getLineHandle(no); }
+//   else { no = self.cm.getDoc().getLineNumber(line); }
+//     console.log( self.cm.getDoc().constructor.name);
+//     var widgets = self.cm.getDoc().lineInfo(line).widgets
+// //   for (var i = 0; i < self.reinputs.length; ++i) {
+// //       if (self.reinputs[i].line_num == no) {
+// //         return line.widgets[0]
+// //       }
+// //   }
+// //   for (var j = 0; j < self.currentReplies.length; ++j) {
+// //       if (self.currentReplies[j].line_num == no) {
+// //           // line no가 일치하는 댓글노드의 line widget 오브젝트를 가져온다.
+// //         //   return self.currentReplies[j].widget;
+// //         return line.widgets[0]
+// //       }
+// //   }
+// if(typeof widgets == 'undefined') return undefined
+//   return widgets.length == 0 ? undefined : widgets[0];
+// }
+
+Reply.prototype.setReplyPanel = function (cm) {
+    var self = this
+    if (self.replyPanel) self.replyPanel.clear()
+    // 에디터에 댓글 다는 패널을 만든다.
+    var PANEL_ELEMENT_CLASS = "CM-buttonsPanel";
+    var panelNode = document.createElement("div");
+    panelNode.className = PANEL_ELEMENT_CLASS;
+    var button = self.createButton(cm, {
+        hotkey: 'Alt-R',
+        class: 'cm-reply',
+        label: 'reply',
+        callback: function (cm) {
+            var self = this
+            cm.focus();
+            self.addReplyInput(cm.getCursor().line)
+        }
+    });
+    panelNode.appendChild(button);
+    self.replyPanel = cm.addPanel(panelNode);
+}
+
+Reply.prototype.createButton = function (cm, config) {
+    var buttonNode;
+    if (config.el) {
+        if (typeof config.el === 'function') {
+            buttonNode = config.el(cm);
+        } else { buttonNode = config.el; }
+    } else {
+        buttonNode = document.createElement('button');
+        buttonNode.innerHTML = config.label;
+        buttonNode.setAttribute('type', 'button');
+        buttonNode.setAttribute('tabindex', '-1');
+
+        //   buttonNode.addEventListener('click', function (e) {
+        //       e.preventDefault();
+        //       cm.focus();
+        //       config.callback(cm,this);
+        //   });
+        buttonNode.addEventListener('click', config.callback.bind(this, cm))
+
+        if (config.class) { buttonNode.className = config.class; }
+        if (config.title) { buttonNode.setAttribute('title', config.title); }
+    }
+    if (config.hotkey) {
+        var map = {};
+        map[config.hotkey] = config.callback;
+        cm.addKeyMap(map);
+    }
+    return buttonNode;
+}
+
+Reply.prototype.genId = function () {
+    return Math.random().toString(36).substr(2)
+}
+
+Reply.prototype.observe = function (event) {
+    var self = this
+    if(self._sync) return
+    if(self._mutex) return
+    self._mutex = true
+    // Insert event example: {type: 'insert', index: 0, values: [0, 1, 2], length: 3}
+    // Delete event example: {type: 'delete', index: 0, oldValues: [0, 1, 2], length: 3}
+    // console.log("yarray: " + JSON.stringify(self.currentReplies.toArray()))
+    if (event.type == 'insert') {
+        for (var i = 0; i < event.values.length; i++) {
+            var is_dom_not_exists = !document.getElementById("reply-" + event.values[i].reply_id)
+            // if it already exsist, skip
+            if (is_dom_not_exists) {
+                self.addReply(JSON.stringify(event.values[i]))
+                // console.log("sync reply seq: "+event.values[i].order)
+            }
+        }
+    } 
+    if (event.type == 'delete') {
+        for (var i = 0; i < event.values.length; i++) {
+            var is_dom_exists = !!document.getElementById("reply-" + event.values[i].reply_id)
+            //if it is already removed, skip
+            if (is_dom_exists) self.removeReply(JSON.stringify(event.values[i]))
+        }
+    }
+    self._mutex = false
+}
+
+module.exports = new Reply()
+},{"./../auth/user":9,"./../filesystem/filesystem":14,"./../filesystem/util":15,"./editor":10}],12:[function(require,module,exports){
 var util = require('./util')
 
 function Directory (path) {
@@ -11489,7 +12024,7 @@ function Directory (path) {
 
 module.exports = Directory
 
-},{"./util":13}],11:[function(require,module,exports){
+},{"./util":15}],13:[function(require,module,exports){
 var util = require('./util')
 
 function File (path) {
@@ -11538,7 +12073,7 @@ File.prototype.getRawContent = function () {
 
 module.exports = File
 
-},{"./util":13}],12:[function(require,module,exports){
+},{"./util":15}],14:[function(require,module,exports){
 /* globals Y, JSZip, Blob, CodeMirror */
 
 var File = require('./file')
@@ -11554,7 +12089,8 @@ function FileSystem () {
   self._tree = [
     new Directory('')
   ]
-  self.yfs = {};
+  self.yfs = null;
+  self.replyMap = null;
 }
 
 // Loads a project
@@ -11783,7 +12319,7 @@ FileSystem.prototype.unzip = function (file, cb) {
 
 module.exports = new FileSystem()
 
-},{"./directory":10,"./file":11,"./util":13}],13:[function(require,module,exports){
+},{"./directory":12,"./file":13,"./util":15}],15:[function(require,module,exports){
 var util = {}
 
 util.getFilename = function (path) {
@@ -11857,12 +12393,13 @@ util.getParameterByName = function (name) {
 
 module.exports = util
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
 var Editor = require('./editor/editor')
 var util = require('./filesystem/util')
-
+var User = require('./auth/user')
+var Reply = require('./editor/reply')
 
 // var DEFAULT_HOSTNAME = 'https://quiet-shelf-57463.herokuapp.com'
 var MAX_FORWARDING_SIZE = 5*1000*1000 // 5mb limit for non-p2p connections (validated by server)
@@ -11884,6 +12421,7 @@ function Multihack (config) {
     if (created) {
       Interface.treeview.addFile(e.parentElement, FileSystem.get(e.path))
       FileSystem.yfs.set(e.path,Y.Text)
+      FileSystem.replyMap.set(e.path,Y.Array)
       Editor.open(e.path)
     }
   })
@@ -11902,6 +12440,7 @@ function Multihack (config) {
       Interface.treeview.remove(e.parentElement, file)
       FileSystem.delete(e.path)
       FileSystem.yfs.delete(e.path)
+      FileSystem.replyMap.delete(e.path)
     })
   })
 
@@ -11916,6 +12455,7 @@ function Multihack (config) {
       }
       FileSystem.delete(workingPath)
       FileSystem.yfs.delete(workingPath)
+      FileSystem.replyMap.delete(workingPath)
       Editor.close()
     })
   })
@@ -11936,22 +12476,24 @@ function Multihack (config) {
   })
 
   Interface.removeOverlay()
-  if (self.embed) {
+  // if (self.embed) {
+  if (true) {
     self._initRemote()
-  } else {
-    Interface.getProject(function (project) {
-      if (!project) {
-        self._initRemote()
-      } else {
-        self.providedProject = true
-        Interface.showOverlay()
-        FileSystem.loadProject(project, function (tree) {
-          Interface.treeview.render(tree)
-          self._initRemote()
-        })
-      }
-    })
+  // } else {
+  //   Interface.getProject(function (project) {
+  //     if (!project) {
+  //       self._initRemote()
+  //     } else {
+  //       self.providedProject = true
+  //       Interface.showOverlay()
+  //       FileSystem.loadProject(project, function (tree) {
+  //         Interface.treeview.render(tree)
+  //         self._initRemote()
+  //       })
+  //     }
+  //   })
   }
+  window.document.getElementById('save').setAttribute('style','display:none;')
 }
 
 Multihack.prototype._initRemote = function () {
@@ -11961,6 +12503,7 @@ Multihack.prototype._initRemote = function () {
     self.roomID = data.room
     window.history.pushState('Multihack', 'Multihack Room '+self.roomID, '?room='+self.roomID + (self.embed ? '&embed=true' : ''));
     self.nickname = data.nickname
+    User.user_name = data.nickname
     
     // initialize a shared object. This function call returns a promise!
     Y({
@@ -11975,7 +12518,7 @@ Multihack.prototype._initRemote = function () {
     share: {
         dir_tree: 'Map', // key: data.filePath, value: y_obj_id
         //code_editor: 'Text', // y.share.code_editor is of type Y.Text
-        //cm_reply: 'Array', // { auth_id, line_num, order_num, level, value }
+        cm_reply: 'Map', 
         // chat: 'Array', // { auth_id, value }
         peers: 'Array' // { user_id, auth_id, name, state, selection}
     }
@@ -12004,13 +12547,11 @@ Multihack.prototype._initRemote = function () {
             if(event.type == 'add') { 
             } else if(event.type == 'update') { // rename file or dir
             } else if(event.type == 'delete') {
-              if(event.type == 'delete') {
-                var parentElement = Interface.treeview.getParentElement(file_path)
-                if (parentElement) {
-                  Interface.treeview.remove(parentElement, FileSystem.get(file_path))
-                }
-                FileSystem.delete(file_path)
+              var parentElement = Interface.treeview.getParentElement(file_path)
+              if (parentElement) {
+                Interface.treeview.remove(parentElement, FileSystem.get(file_path))
               }
+              FileSystem.delete(file_path)
             }
           }
           Interface.treeview.rerender(FileSystem.getTree())
@@ -12022,6 +12563,25 @@ Multihack.prototype._initRemote = function () {
           }
         })
 
+        FileSystem.replyMap = y.share.cm_reply;
+        // FileSystem.replyMap.observe(function(event) {
+        //   if(!FileSystem.exists(event.name)) {
+        //     if(event.type == 'add') { 
+        //       Reply.setReplies(event.value)
+        //     }
+        //   }else {
+        //     if(event.type == 'add' && event.name == Editor._workingFile.path) {
+        //       event.value.unobserve(Reply.observe)
+        //       event.value.observe(Reply.observe)
+        //     }
+        //   }
+
+        //   if(event.type == 'add') { 
+        //   } else if(event.type == 'update') { // rename file or dir
+        //   } else if(event.type == 'delete') {
+        //   }
+        // })
+
         //peer network monitor binding
         y.share.peers.push([{
           'user_id': y.connector.userId,
@@ -12030,7 +12590,6 @@ Multihack.prototype._initRemote = function () {
         // y.share.peers.observe(function(e){
         // })
         y.connector.onUserEvent(function(e) {
-          console.log('connector event ' + y.share.peers.toArray())
           if(e.action == 'userLeft') {
             var ypeers = y.share.peers.toArray()
             for(var i=0;i<ypeers.length;i++) {
@@ -12044,22 +12603,26 @@ Multihack.prototype._initRemote = function () {
   }
 
   // Random starting room (to be changed) or from query
-  if (!self.roomID && !self.embed) {
-    Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
-  } else if (!self.embed) {
-    Interface.getNickname(self.roomID, onRoom)
-  } else {
-    Interface.embedMode()
+  // if (!self.roomID && !self.embed) {
+  //   Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
+  // } else if (!self.embed) {
+  //   Interface.getNickname(self.roomID, onRoom)
+  // } else {
+    // Interface.embedMode()
+    // onRoom({
+    //   room: self.roomID || Math.random().toString(36).substr(2),
+    //   nickname: 'Guest'
+    // })
+  // }
     onRoom({
-      room: self.roomID || Math.random().toString(36).substr(2),
+      room: self.roomID || "rellat-dev-v0.0.1",
       nickname: 'Guest'
     })
-  }
 }
 
 module.exports = Multihack
 
-},{"./editor/editor":9,"./filesystem/filesystem":12,"./filesystem/util":13,"./interface/interface":15}],15:[function(require,module,exports){
+},{"./auth/user":9,"./editor/editor":10,"./editor/reply":11,"./filesystem/filesystem":14,"./filesystem/util":15,"./interface/interface":17}],17:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var Modal = require('./modal')
@@ -12339,7 +12902,7 @@ Interface.prototype.showOverlay = function (msg, cb) {
 
 module.exports = new Interface()
 
-},{"./modal":16,"./treeview":18,"events":19,"inherits":4,"p2p-graph":7}],16:[function(require,module,exports){
+},{"./modal":18,"./treeview":20,"events":21,"inherits":4,"p2p-graph":7}],18:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var mustache = require('mustache')
@@ -12405,7 +12968,7 @@ Modal.prototype.close = function () {
 
 module.exports = Modal
 
-},{"./templates":17,"events":19,"inherits":4,"mustache":6}],17:[function(require,module,exports){
+},{"./templates":19,"events":21,"inherits":4,"mustache":6}],19:[function(require,module,exports){
 var dict = {}
 
 dict['file'] =
@@ -12457,7 +13020,7 @@ dict['network'] =
     '<button class="no-button">Close</button>'
 
 module.exports = dict
-},{}],18:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 
@@ -12609,7 +13172,7 @@ TreeView.prototype.addDir = function (parentElement, file) {
 
 module.exports = TreeView
 
-},{"events":19,"inherits":4}],19:[function(require,module,exports){
+},{"events":21,"inherits":4}],21:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -12913,7 +13476,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],20:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -13095,5 +13658,5 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[14])(14)
+},{}]},{},[16])(16)
 });

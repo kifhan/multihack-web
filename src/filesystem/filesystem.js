@@ -13,7 +13,8 @@ function FileSystem () {
   self._tree = [
     new Directory('')
   ]
-  self.yfs = {};
+  self.yfs = null;
+  self.replyMap = null;
 }
 
 // Loads a project
