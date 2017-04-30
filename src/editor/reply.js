@@ -278,8 +278,8 @@ Reply.prototype.addReply = function (replyobj) {
         var clickdom = document.getElementById("reply-remove-" + reply_id)
         clickdom.addEventListener("click", self.removeReply.bind(self,{'reply_id':reply_id,'user_id': replyobj.user_id,'user_request':User.user_id}));
     }
-    self.timeouts.push(setTimeout(oarcd, 50))
-
+    if(replyobj.user_id == User.user_id) self.timeouts.push(setTimeout(oarcd, 50))
+    // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
     
     function timecheck() {
         var replytime = document.getElementById("reply-time-" + reply_id)
