@@ -332,7 +332,7 @@ console.log("is this yarray inserting?: " + (self.currentReplies instanceof Y.Ar
         user_name: replyobj.user_name,
         user_picture: replyobj.user_picture,
         reply_id: reply_id,
-        insert_time: replyobj.insert_time,
+        insert_time: String(replyobj.insert_time),
         level: replyobj.level,
         order: replyobj.order,
         line_num: replyobj.line_num /*self.cm.doc.getLineNumber(widget.line)*/,
