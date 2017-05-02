@@ -11790,13 +11790,14 @@ Reply.prototype.addReply = function (replyobj) {
 
     console.log("reply inserted at: "+(replyobj.order)+" of total: "+self.currentReplies.toArray().length)
 
-    function oarcd() {
-        var clickdom = document.getElementById("reply-remove-" + reply_id)
-        clickdom.addEventListener("click", self.removeReply.bind(self,{'reply_id':reply_id,'user_id': replyobj.user_id,'user_request':User.user_id}));
+    if(replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
+        function oarcd() {
+            var clickdom = document.getElementById("reply-remove-" + reply_id)
+            clickdom.addEventListener("click", self.removeReply.bind(self,{'reply_id':reply_id,'user_id': replyobj.user_id,'user_request':User.user_id}));
+        }
+        self.timeouts.push(setTimeout(oarcd, 50))
     }
-    if(replyobj.user_id == User.user_id) self.timeouts.push(setTimeout(oarcd, 50))
-    // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
-    
+
     function timecheck() {
         var replytime = document.getElementById("reply-time-" + reply_id)
         if(!replytime) return;
@@ -12000,7 +12001,8 @@ Reply.prototype.observe = function (event) {
             var is_dom_not_exists = !document.getElementById("reply-" + event.values[i].reply_id)
             // if it already exsist, skip
             if (is_dom_not_exists) {
-                self.addReply(JSON.stringify(event.values[i]))
+                self.addReply(event.values[i])
+                // self.addReply(JSON.stringify(event.values[i]))
                 // console.log("sync reply seq: "+event.values[i].order)
             }
         }
@@ -12009,7 +12011,7 @@ Reply.prototype.observe = function (event) {
         for (var i = 0; i < event.values.length; i++) {
             var is_dom_exists = !!document.getElementById("reply-" + event.values[i].reply_id)
             //if it is already removed, skip
-            if (is_dom_exists) self.removeReply(JSON.stringify(event.values[i]))
+            if (is_dom_exists) self.removeReply(event.values[i])
         }
     }
     self._mutex = false
