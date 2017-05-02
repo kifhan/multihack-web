@@ -11598,7 +11598,7 @@ Reply.prototype.linewidgetEvent = function (cm, event) {
                 if (self.cm.getLineNumber(self.lineWidgets[j].line) != repliesarray[i].line_num) {
                     console.log("line_num needs to be change: " + repliesarray[i].reply_id)
                     repliesarray[i].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
-                    // changeobjs.push(JSON.stringify(repliesarray[i]))
+                    changeobjs.push(JSON.stringify(repliesarray[i]))
                     // self.removeReply({"reply_id":repliesarray[i].reply_id, "sync": true})
                     // self.currentReplies.delete(i, 1)
                     // // self.addReply(repliesarray[i])
@@ -11615,16 +11615,16 @@ Reply.prototype.linewidgetEvent = function (cm, event) {
             }
         }
     }
-    for (var i = changeobjs.length-1; i >= 0; i--) {
-        self.addReply(changeobjs[i])
-    }
+    // for (var i = changeobjs.length-1; i >= 0; i--) {
+    //     self.addReply(changeobjs[i])
+    // }
 
     self._sync = true
     self.currentReplies.delete(0,repliesarray.length)
     self.currentReplies.push(repliesarray)    
     self.timeouts.push(setTimeout(function() {
         self._sync = false
-    }, 100))
+    }, 200))
     // self.removeReplyInput();
 }
 
