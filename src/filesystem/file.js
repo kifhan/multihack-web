@@ -10,38 +10,32 @@ function File (path) {
   self.viewMapping = util.getViewMapping(path)
   self.alreadyLink = false
   
-  // self.doc = util.getViewMapping(path) === 'text' ? new CodeMirror.Doc('', util.pathToMode(path)) : ''
-  self.ytext = undefined;
-
-  // HACK: To get working with HyperHost
+  self.doc = new CodeMirror.Doc('', util.pathToMode(path))
+  
   Object.defineProperty(self, 'content', {
-    get: self.getRawContent.bind(self)
+    get: function () {
+      return self.doc.getValue()
+    }
   })
+  
   Object.defineProperty(self, 'size', {
     get: function () {
-      return self.getRawContent().length
+      return self.doc.getValue().length
     }
   })
 }
 
-File.prototype.write = function (content) {
+File.prototype.write = function (content, cb) {
   var self = this
-  
-  if (util.getViewMapping(self.path) === 'text') {
-    self.ytext.insert(0,content)
-  } else {
-    self.ytext = content
-  }
+
+  self.doc.setValue(content)
+  if (cb) cb()
 }
 
-File.prototype.getRawContent = function () {
+File.prototype.read = function (cb) {
   var self = this
 
-  if (self.viewMapping === 'image') {
-    return self.ytext
-  } else {
-    return self.ytext.toString()
-  }
+  if (cb) cb(self.doc.getValue())
 }
 
 module.exports = File

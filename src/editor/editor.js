@@ -3,8 +3,6 @@
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var FileSystem = require('./../filesystem/filesystem')
-var util = require('./../filesystem/util')
-var Reply = require('./reply')
 
 inherits(Editor, EventEmitter)
 
@@ -29,9 +27,9 @@ function Editor () {
     autoCloseTags: true
   }
 
-  self.cm = CodeMirror.fromTextArea(textArea, options)
+  self._cm = CodeMirror.fromTextArea(textArea, options)
 
-  self.cm.on('keyup', function (editor, event) {
+  self._cm.on('keyup', function (editor, event) {
     if (!ExcludedIntelliSenseTriggerKeys[(event.keyCode || event.which).toString()]) {
       CodeMirror.commands.autocomplete(editor, null, { completeSingle: false })
     }
@@ -39,45 +37,33 @@ function Editor () {
 
   self._workingFile = null
   self._mutex = false
-  self.cm.on('change', Reply.linewidgetEvent.bind(Reply))
-  self.cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
+
+  self._cm.on('change', self._onchange.bind(self))
+  self._cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
 
   self._theme = null
+  self._remoteCarets = []
+  self._lastSelections = []
+}
+
+Editor.prototype._onchange = function (cm, change) {
+  var self = this
   
+  if (self._mutex) return
+  
+  change.start = self._cm.indexFromPos(change.from)
+  self.emit('change', {
+    filePath: self._workingFile.path,
+    change: change
+  })
 }
-
-Editor.prototype.getcm = function () {
-  return this.cm.getDoc().getEditor()
-}
-
-// Editor.prototype._onchange = function (cm, change) {
-//   var self = this
-
-//   if (self._mutex || !self._workingFile) return
-//   self.emit('change', {
-//     filePath: self._workingFile.path,
-//     change: change
-//   })
-// }
 
 Editor.prototype._onSelectionChange = function (cm, change) {
   var self = this
   
-  var ranges = change.ranges.filter(function (range) {
-    return range.head.ch !== range.anchor.ch || range.head.line !== range.anchor.line
-  }).map(function (range) {
-    var nr = JSON.parse(JSON.stringify(range))
-    if (nr.head.line > nr.anchor.line || (
-      nr.head.line === nr.anchor.line && nr.head.ch > nr.anchor.ch
-    )) {
-      var temp = nr.head
-      nr.head = nr.anchor
-      nr.anchor = temp
-    }
-    return nr
-  })
+  var ranges = change.ranges.map(self._putHeadBeforeAnchor)
   
-  self.emit('change', {
+  self.emit('selection', {
     filePath: self._workingFile.path,
     change: {
       type: 'selection',
@@ -86,40 +72,79 @@ Editor.prototype._onSelectionChange = function (cm, change) {
   })
 }
 
-Editor.prototype.highlight = function (filePath, ranges) {
+Editor.prototype.highlight = function (selections) {
   var self = this
-  if (!self._workingFile || filePath !== self._workingFile.path) return
   
-  self.cm.getAllMarks().forEach(function (mark) {
-    mark.clear()
-  })
+  self._lastSelections = selections
   
-  ranges.forEach(function (range) {
-    self.cm.markText(range.head, range.anchor, {
-      className: 'remoteSelection'
+  // Timeout so selections are always applied after changes
+  window.setTimeout(function () {
+    if (!self._workingFile) return
+
+    self._remoteCarets.forEach(self._removeRemoteCaret)
+    self._remoteCarets = []
+
+    self._cm.getAllMarks().forEach(function (mark) {
+      mark.clear()
     })
-  })
+
+    selections.forEach(function (sel) {
+      if (sel.filePath !== self._workingFile.path) return
+
+      sel.change.ranges.forEach(function (range) {
+        if (self._isNonEmptyRange(range)) {
+          self._cm.markText(range.head, range.anchor, {
+            className: 'remoteSelection'
+          })
+        } else {
+          self._insertRemoteCaret(range)
+        }
+      })
+    })
+  }, 10)
+}
+
+Editor.prototype._insertRemoteCaret = function (range) {
+  var self = this
+
+  var caretEl = document.createElement('div')
+
+  caretEl.classList.add('remoteCaret')
+  caretEl.style.height = self._cm.defaultTextHeight() + "px"
+  caretEl.style.marginTop = "-" + self._cm.defaultTextHeight() + "px"
+
+  self._remoteCarets.push(caretEl)
+
+  self._cm.addWidget(range.anchor, caretEl, false)
+}
+
+Editor.prototype._removeRemoteCaret = function (caret) {
+  var self = this
+  caret.parentNode.removeChild(caret)
 }
 
 // Handle an external change
-// Editor.prototype.change = function (filePath, change) {
-//   var self = this
-//   self._mutex = true
-//   if (!self._workingFile || filePath !== self._workingFile.path) {
-//     FileSystem.getFile(filePath).doc.replaceRange(change.text, change.to, change.from)
-//   } else {
-//     self.cm.replaceRange(change.text, change.to, change.from)
-//   }
-//   self._mutex = false
-// }
+Editor.prototype.change = function (filePath, change) {
+  var self = this
+  
+  if (!self._workingFile || filePath !== self._workingFile.path) {
+    FileSystem.getFile(filePath).doc.replaceRange(change.text, change.to, change.from)
+  } else {
+    self._mutex = true
+    self._cm.replaceRange(change.text, change.to, change.from)
+    self._mutex = false
+  }
+}
+
+Editor.prototype.posFromIndex = function (index) {
+  var self = this
+  
+  return self._cm.posFromIndex(index)
+}
 
 Editor.prototype.open = function (filePath) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) return
-  if (self._workingFile && util.getViewMapping(filePath) === 'text') {
-    self._workingFile.ytext.unbindCodeMirror(self.cm)
-    
-  }
   self._workingFile = FileSystem.get(filePath)
   document.getElementById('working-file').innerHTML = self._workingFile.name
   switch (self._workingFile.viewMapping) {
@@ -131,28 +156,15 @@ Editor.prototype.open = function (filePath) {
     default:
       document.querySelector('.editor-wrapper').style.display = ''
       document.querySelector('.image-wrapper').style.display = 'none'
-      function ytextcallback(e) {
-        if(typeof self._workingFile.ytext == 'undefined') { setTimeout(ytextcallback,10); return; }
-        self.cm.swapDoc(new CodeMirror.Doc(self._workingFile.ytext.toString(), util.pathToMode(filePath)))
-        self._workingFile.ytext.unbindCodeMirrorAll()
-        self._workingFile.ytext.bindCodeMirror(self.cm)
-        Reply.setReplyPanel(self.cm)
-        setTimeout(yarraycallback,10)
-      }
-      setTimeout(ytextcallback,10)
-
-      function yarraycallback(e) {
-        var replies = FileSystem.replyMap.get(filePath)
-        if(typeof replies == 'undefined') { setTimeout(yarraycallback,10); return; }
-        Reply.setReplies(filePath,self)
-      }
+      self._cm.swapDoc(self._workingFile.doc)
       break
   }
+  
+  self.highlight(self._lastSelections)
 }
 
 Editor.prototype.close = function () {
   var self = this
-  if(self._workingFile) self._workingFile.ytext.unbindCodeMirror(self.cm)
   self._workingFile = null
   document.getElementById('working-file').innerHTML = ''
   document.querySelector('.editor-wrapper').style.display = 'none'
@@ -162,6 +174,22 @@ Editor.prototype.close = function () {
 Editor.prototype.getWorkingFile = function () {
   var self = this
   return self._workingFile
+}
+
+Editor.prototype._isNonEmptyRange = function (range) {
+  return range.head.ch !== range.anchor.ch || range.head.line !== range.anchor.line
+}
+
+Editor.prototype._putHeadBeforeAnchor = function (range) {
+  var nr = JSON.parse(JSON.stringify(range))
+  if (nr.head.line > nr.anchor.line || (
+    nr.head.line === nr.anchor.line && nr.head.ch > nr.anchor.ch
+  )) {
+    var temp = nr.head
+    nr.head = nr.anchor
+    nr.anchor = temp
+  }
+  return nr
 }
 
 module.exports = new Editor()

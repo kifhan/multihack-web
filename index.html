@@ -18,7 +18,7 @@
     <!--brackets -->
     <link rel="stylesheet" href="static/css/filetree/treestyles.css">
     <link rel="stylesheet" href="static/css/themes.css">
-    <link rel="stylesheet" href="static/css/style.css"> 
+    <link rel="stylesheet" href="static/css/style.css">
 
     <style>
         .nav.theme-dark {
@@ -69,6 +69,9 @@
         <button id="network" title="Connection Graph" style="display:none" class="icon-button icon-collapse network go-button">
             <img src="static/img/network.png">
             <span>Peers</span>
+            <div id="tooltip-lostpeer" style="opacity:0; display:none;" class="tooltip">
+              <span>Lost connection to "Guest"</span>
+            </div>
         </button>
         <div id="status" style="margin-left:12px;float:right;margin-top:15px;"></div>
         <div id="fb-login-button"><fb:login-button scope="public_profile,email" onlogin="checkLoginState();"></fb:login-button></div>
@@ -78,17 +81,14 @@
     </nav>
     <div id="sidebar" class="sidebar theme-light">
         <div class="panel-topbar theme-border">
-            <span class="mobile-hide">Project&nbsp;</span>Files
+            <span id="room"></span>
             <span id="root-plus" class="beside plus">&#43;</span>
         </div>
         <div class="icon-button" id="collapsesidebar">
             <img src="static/img/collapse.png">
         </div>
-        <div class="icon-button" id="resync" style="display: none;">
-            <img src="static/img/reload.png">
-        </div>
         <ol id="tree" class="tree panel">
-          
+
         </ol>
     </div>
     <div class="workspace">
@@ -113,7 +113,7 @@
     <div id="modal" class="modal text-center theme-dark-border"></div>
     <div id="overlay" class="blocking-overlay overlay"></div>
 </body>
-  
+
 <!-- CodeMirror syntax -->
 <script src="static/js/vendor/codemirror.js"></script>
 <script async src="static/js/vendor/syntaxmodes/javascript.js"></script>
@@ -121,7 +121,7 @@
 <script async src="static/js/vendor/syntaxmodes/xml.js"></script>
 <script async src="static/js/vendor/syntaxmodes/htmlmixed.js"></script>
 <script async src="static/js/vendor/syntaxmodes/php.js"></script>
-  
+
 <!-- CodeMirror addons -->
 <script async src="static/js/vendor/addons/xml-fold.js"></script>
 <script async src="static/js/vendor/addons/closebrackets.js"></script>
@@ -136,26 +136,17 @@
 <script async src="static/js/vendor/addons/html-hint.js"></script>
 <script async src="static/js/vendor/addons/panel.js"></script>
 
-<script src="./bower_components/yjs/y.js"></script>
-<script src="./bower_components/y-memory/y-memory.js"></script>
-<script src="./bower_components/y-webrtc/y-webrtc.js"></script>
-<script src="./bower_components/y-map/y-map.js"></script>
-<script src="./bower_components/y-text/y-text.js"></script>
-<script src="./bower_components/y-array/y-array.js"></script>
-<script src="./bower_components/y-list/y-list.js"></script>
-
 <!--For saving projects-->
 <script src="static/js/vendor/jszip.min.js"></script>
 <script src="static/js/vendor/FileSaver.min.js"></script>
 <!-- Socket.io -->
-<!--<script src="static/js/vendor/socket.io.js"></script>-->
+<script src="static/js/vendor/socket.io.js"></script>
 <!-- HyperHost -->
-<!--<script src="static/js/vendor/peer.js"></script>-->
-<!--<script src="static/js/vendor/hyperhost.js"></script>-->
+<script src="static/js/vendor/peer.js"></script>
+<script src="static/js/vendor/hyperhost.js"></script>
 <!-- Core modules -->
 <script src="static/js/multihack.js"></script>
-<script>
-Multihack({
+<script>Multihack({
     hostname: ''
 })
 var userdata = null;
@@ -190,13 +181,13 @@ function checkLoginState() {
 window.fbAsyncInit = function() {
     FB.init({
         appId      : '270866160013445',
-        cookie     : true,  // enable cookies to allow the server to access 
+        cookie     : true,  // enable cookies to allow the server to access
                             // the session
         xfbml      : true,  // parse social plugins on this page
         version    : 'v2.8' // use graph api version 2.8
     });
 
-    // Now that we've initialized the JavaScript SDK, we call 
+    // Now that we've initialized the JavaScript SDK, we call
     // FB.getLoginStatus().  This function gets the state of the
     // person visiting this page and can return one of three states to
     // the callback you provide.  They can be:

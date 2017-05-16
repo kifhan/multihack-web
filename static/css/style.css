@@ -25,12 +25,11 @@ body {
     overflow: hidden;
     font-size: 14px;
     background: black;
-    font-family: Monaco;
 }
 
-/** {
+* {
     font-family: Monaco;
-}*/
+}
 
 .nav {
     height: 60px;
@@ -39,6 +38,7 @@ body {
     top: 0;
     right: 0;
     padding-right: 10px;
+    z-index: 1;
 }
 
 .embed .nav {
@@ -58,6 +58,7 @@ body {
 .nav .icon-button {
     float: right;
     margin-top: 15px;
+    position: relative;
 }
 
 .nav .icon-button span {
@@ -66,6 +67,40 @@ body {
 
 .nav .icon-button img ~ span {
     margin-left: 6px;
+}
+
+.nav .icon-button .tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: opacity .3s ease-in-out;
+}
+
+.nav .icon-button .tooltip > span {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  background: #222222;
+  padding: 5px;
+  white-space: nowrap;
+  border: black 1px solid;
+}
+
+.nav .icon-button .tooltip > span:after {
+  width: 0; 
+  height: 0; 
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid black;
+  position: absolute;
+  right: 30px;
+  top: -5px;
+  content: "";
 }
 
 .noselect,
@@ -406,6 +441,11 @@ input[type="text"].long {
   background-color: #3f5d38;
 }
 
+.remoteCaret {
+  background-color: #7fb971;
+  width: 1px;
+  z-index: 2;
+}
 
 /* Custom scrollbars */
 
@@ -500,13 +540,13 @@ span.mobile-hide{
 
 @media only screen and (min-width: 768px) {
     .workspace {
-        left: 200px;
+        left: 340px;
     }
     .sidebar {
-      width: 200px;
+      width: 340px;
     }
     .sidebar .panel-topbar {
-        width: 190px;
+        width: 330px;
     }
     .icon-collapse > span{
         display: inline-block;
