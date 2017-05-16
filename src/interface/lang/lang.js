@@ -13,11 +13,11 @@ function Lang () {
   var langLocale = navigator.languages
     ? navigator.languages[0]
     : (navigator.language || navigator.userLanguage)
-  
+
   self.lang = langLocale.split('-')[0]
   self.locale = langLocale.split('-')[1] // TODO: locale support
-  
-  
+
+
   // translate the DOM
   document.querySelector('#save > span').innerHTML = self.get('save')
   document.querySelector('#deploy > span').innerHTML = self.get('deploy')
@@ -27,12 +27,12 @@ function Lang () {
 
 Lang.prototype.get = function (key, data) {
   var self = this
-  
+
   data = data || {}
-  
+
   console.log(key)
-  
-  return mustache.render(translations[self.lang][key], data) || mustache.render(translations['en'][key], data)
+  var lookup = translations[self.lang] || translations['en']
+  return mustache.render(lookup[key] || translations['en'][key], data)
 }
-  
+
 module.exports = new Lang()
