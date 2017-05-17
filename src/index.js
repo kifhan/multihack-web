@@ -20,10 +20,11 @@ function Multihack (config) {
   config = config || {}
 
   Interface.on('openFile', function (e) {
-    console.log('interface open file: ' + Editor._workingFile.path +' '+ e.path);
-    if (Editor._workingFile.path === e.path) {
-      return
+    if (Editor._workingFile) {
+      if (Editor._workingFile.path === e.path) return
+      console.log('switching file: ' + Editor._workingFile.path);
     }
+    console.log('interface open file: ' + e.path);
     FileSystem.getFile(e.path).doc.setValue(self._remote.getContent(e.path))
     Editor.open(e.path)
     self._remote.setObserver(e.path + '.replydb','reply')
@@ -197,12 +198,13 @@ Multihack.prototype._initRemote = function (cb) {
     self._remote.on('createFile', function (data) {
       FileSystem.getFile(data.filePath).write(data.content)
       Interface.treeview.rerender(FileSystem.getTree())
-      if (!Editor.getWorkingFile()) {
-        self._remote.setObserver(data.filePath + '.replydb','reply')
-        self._remote.setObserver(data.filePath,'text')
-        Editor.open(data.filePath)
-        Reply.setReplies(data.filePath + '.replydb', Editor._cm, self._remote.getReplyContent(data.filePath + '.replydb'))
-      }
+      // if (!Editor.getWorkingFile()) {
+      //   self._remote.setObserver(data.filePath + '.replydb','reply')
+      //   self._remote.setObserver(data.filePath,'text')
+      //   Editor.open(data.filePath)
+      //   FileSystem.getFile(data.filePath).doc.setValue(self._remote.getContent(data.filePath))
+      //   Reply.setReplies(data.filePath + '.replydb', Editor._cm, self._remote.getReplyContent(data.filePath + '.replydb'))
+      // }
     })
     self._remote.on('createDir', function (data) {
       FileSystem.mkdir(data.path)
