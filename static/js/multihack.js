@@ -34739,7 +34739,7 @@ var getBrowserRTC = require('get-browser-rtc')
 class Connector extends Y.AbstractConnector {
   constructor (y, opts) {
     super(y, opts)
-    
+
     var self = this
     if (!(self instanceof Connector)) return new Connector(y, opts)
 
@@ -34761,16 +34761,16 @@ class Connector extends Y.AbstractConnector {
 
 Connector.prototype._setupSocket = function () {
   var self = this
-  
+
   self._socket.on('forward', function (data) {
     if (data.event === 'yjs') {
       self.receiveMessage(data.id, data.message)
     }
   })
-  
+
   self._socket.on('peer-join', function (data) {
     if (!self.nop2p && !data.nop2p) return // will connect p2p
-    
+
     var fakePeer = {
       metadata: {
         nickname: data.nickname
@@ -34779,14 +34779,14 @@ Connector.prototype._setupSocket = function () {
       nop2p: data.nop2p
     }
     self.peers.push(fakePeer)
-    
+
     if (data.nop2p) self.mustForward++
-  
+
     self._onGotPeer(fakePeer)
   })
-  
+
   self._socket.on('peer-leave', function (data) {
-    if (!self.nop2p && !data.nop2p) return // will disconnect p2p 
+    if (!self.nop2p && !data.nop2p) return // will disconnect p2p
 
     for (var i=0; i<self.peers.length; i++) {
       if (self.peers[i].id === data.id) {
@@ -34797,7 +34797,7 @@ Connector.prototype._setupSocket = function () {
     }
     if (data.nop2p) self.mustForward--
   })
-  
+
   self._socket.on('id', function (id) {
     if (self.id) return
     self.id = id
@@ -34806,7 +34806,7 @@ Connector.prototype._setupSocket = function () {
       nop2p: self.nop2p
     })
     self.setUserId(id)
-    
+
     self._socket.emit('join', {
       room: self.room,
       nickname: self.nickname,
@@ -34817,19 +34817,20 @@ Connector.prototype._setupSocket = function () {
 
 Connector.prototype._setupP2P = function (room, nickname) {
   var self = this
-  
+
   self._client = new SimpleSignalClient(self._socket, {
-    room: self.room
+    room: self.room,
+    reconnectTimer: 100
   })
   self.events('client', self._client)
-  
-  self._client.on('ready', function (peerIDs) {   
+
+  self._client.on('ready', function (peerIDs) {
 
     self.events('voice', {
       client: self._client,
       socket: self._socket
     })
-    
+
     if (!self.id) {
       self.setUserId(self._client.id)
       self.id = self._client.id
@@ -34838,7 +34839,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
         nop2p: self.nop2p
       })
     }
-    
+
     for (var i=0; i<peerIDs.length; i++) {
       if (peerIDs[i] === self._client.id) continue
       self._client.connect(peerIDs[i], {wrtc:self.wrtc}, {
@@ -34846,14 +34847,14 @@ Connector.prototype._setupP2P = function (room, nickname) {
       })
     }
   })
-  
+
   self._client.on('request', function (request) {
     if (request.metadata.voice) return
     request.accept({wrtc:self.wrtc}, {
       nickname: self.nickname
     })
   })
-  
+
   self._client.on('peer', function (peer) {
     if (peer.metadata.voice) return
     peer.metadata.nickname = peer.metadata.nickname || 'Guest'
@@ -34869,9 +34870,9 @@ Connector.prototype._setupP2P = function (room, nickname) {
         peer.send(chunk)
       }
     }
-    
+
     peer.pipe(peer.wire).pipe(throttle).pipe(peer)
-    
+
     self.peers.push(peer)
 
     peer.wire.on('yjs', function (message) {
@@ -34894,20 +34895,20 @@ Connector.prototype._setupP2P = function (room, nickname) {
           self.receiveMessage(a.id, a.message)
         }
       })
-    }) 
-    
+    })
+
     peer.on('close', function () {
       console.warn('connection to peer closed')
       self._destroyPeer(peer)
     })
-    
-    
+
+
   })
 }
 
 Connector.prototype._destroyPeer = function (peer) {
   var self = this
-  
+
   for (var i=0; i<self.peers.length; i++) {
     if (self.peers[i].id === peer.id) {
       self.peers.splice(i, 1)
@@ -34920,7 +34921,7 @@ Connector.prototype._destroyPeer = function (peer) {
 
 Connector.prototype._sendAllPeers = function (event, message) {
   var self = this
-  
+
   if (self.nop2p || self.mustForward > 0) {
     self._socket.emit('forward', {
       event: event,
@@ -34939,7 +34940,7 @@ Connector.prototype._sendAllPeers = function (event, message) {
 
 Connector.prototype._sendOnePeer = function (id, event, message) {
   var self = this
-  
+
   if (self.nop2p) {
     self._socket.emit('forward', {
       target: id,
@@ -34948,7 +34949,7 @@ Connector.prototype._sendOnePeer = function (id, event, message) {
     })
     return
   }
-  
+
   for (var i=0; i<self.peers.length; i++) {
     if (self.peers[i].id !== id) continue
     if (self.peers[i].nop2p) {
@@ -34966,7 +34967,7 @@ Connector.prototype._sendOnePeer = function (id, event, message) {
 
 Connector.prototype._onGotPeer = function (peer) {
   var self = this
-  
+
   self.events('peers', {
     peers: self.peers,
     mustForward: self.mustForward
@@ -34977,7 +34978,7 @@ Connector.prototype._onGotPeer = function (peer) {
 
 Connector.prototype._onLostPeer = function (peer) {
   var self = this
-  
+
   self.events('peers', {
     peers: self.peers,
     mustForward: self.mustForward
@@ -34988,7 +34989,7 @@ Connector.prototype._onLostPeer = function (peer) {
 
 Connector.prototype.disconnect = function () {
   var self = this
-  
+
   for (var i=0; i<self.peers.length; i++) {
     if (self.peers[i].nop2p || self.nop2p) {
       self.peers[i] = null
@@ -34996,7 +34997,7 @@ Connector.prototype.disconnect = function () {
       self.peers[i].destroy()
     }
   }
-  
+
   self.voice = null
   self._client = null
   self.nop2p = null
@@ -35012,7 +35013,7 @@ Connector.prototype.disconnect = function () {
 
 Connector.prototype.reconnect = function () {
   var self = this
-  
+
   self._socket = new Io(self.hostname)
   self.peers = []
   self.events('peers', {
@@ -35022,7 +35023,7 @@ Connector.prototype.reconnect = function () {
   self.mustForward = 0 // num of peers that are nop2p
 
   self._setupSocket()
-  
+
   if (!getBrowserRTC()) {
     console.warn('No WebRTC support')
     self.nop2p = true
@@ -40015,7 +40016,7 @@ console.log('widget is: ' + widget);
   if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
     function oarcd () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
-      clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id}))
+      clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
     }
     self.timeouts.push(setTimeout(oarcd, 50))
   }
@@ -40082,7 +40083,7 @@ Reply.prototype.removeReplyInput = function () {
 }
 Reply.prototype.removeReply = function (robj, dontsync) {
   var self = this
-  dontsync = (typeof dontsync === 'undefined') ? false : true
+  dontsync = (typeof dontsync === 'undefined') ? false : dontsync
   // 'user_request':User.user_id
   if (typeof robj.user_request !== 'undefined') {
     if (robj.user_id != robj.user_request) {
@@ -40094,8 +40095,8 @@ Reply.prototype.removeReply = function (robj, dontsync) {
     if (self.lineWidgets[j].node.getAttribute('id') === 'reply-' + robj.reply_id) {
       self.cm.removeLineWidget(self.lineWidgets[j])
       self.lineWidgets.splice(j, 1)
-      if (!dontsync) {
-        console.log('하지말라고');
+      if (dontsync === false) {
+        console.log('reply removed by user');
         self.emit('changeReply', {
           filePath: self._workingFilePath,
           optype: 'delete',
@@ -40686,15 +40687,17 @@ function Multihack (config) {
     self._initRemote()
   } else {
     self._initRemote(function () {
-      Interface.getProject(function (project) {
-        if (project) {
-          Interface.showOverlay()
-          FileSystem.loadProject(project, function (tree) {
-            Interface.treeview.rerender(tree)
-            Interface.hideOverlay()
-          })
-        }
-      })
+      // Interface.getProject(function (project) {
+      //   if (project) {
+      //     Interface.showOverlay()
+      //     FileSystem.loadProject(project, function (tree) {
+      //       Interface.treeview.rerender(tree)
+      //       Interface.hideOverlay()
+      //     })
+      //   }
+      // })
+      // 앱을 시작할 때 프로젝트 ZIP 파일을 로드하는 기능을 껐다.
+      Interface.treeview.rerender(tree)
     })
   }
 }

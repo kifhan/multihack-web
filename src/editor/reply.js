@@ -250,7 +250,7 @@ console.log('widget is: ' + widget);
   if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
     function oarcd () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
-      clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id}))
+      clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
     }
     self.timeouts.push(setTimeout(oarcd, 50))
   }
@@ -317,7 +317,7 @@ Reply.prototype.removeReplyInput = function () {
 }
 Reply.prototype.removeReply = function (robj, dontsync) {
   var self = this
-  dontsync = (typeof dontsync === 'undefined') ? false : true
+  dontsync = (typeof dontsync === 'undefined') ? false : dontsync
   // 'user_request':User.user_id
   if (typeof robj.user_request !== 'undefined') {
     if (robj.user_id != robj.user_request) {
@@ -329,8 +329,8 @@ Reply.prototype.removeReply = function (robj, dontsync) {
     if (self.lineWidgets[j].node.getAttribute('id') === 'reply-' + robj.reply_id) {
       self.cm.removeLineWidget(self.lineWidgets[j])
       self.lineWidgets.splice(j, 1)
-      if (!dontsync) {
-        console.log('하지말라고');
+      if (dontsync === false) {
+        console.log('reply removed by user');
         self.emit('changeReply', {
           filePath: self._workingFilePath,
           optype: 'delete',

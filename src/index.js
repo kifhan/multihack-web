@@ -129,15 +129,17 @@ function Multihack (config) {
     self._initRemote()
   } else {
     self._initRemote(function () {
-      Interface.getProject(function (project) {
-        if (project) {
-          Interface.showOverlay()
-          FileSystem.loadProject(project, function (tree) {
-            Interface.treeview.rerender(tree)
-            Interface.hideOverlay()
-          })
-        }
-      })
+      // Interface.getProject(function (project) {
+      //   if (project) {
+      //     Interface.showOverlay()
+      //     FileSystem.loadProject(project, function (tree) {
+      //       Interface.treeview.rerender(tree)
+      //       Interface.hideOverlay()
+      //     })
+      //   }
+      // })
+      // 앱을 시작할 때 프로젝트 ZIP 파일을 로드하는 기능을 껐다.
+      Interface.treeview.rerender(tree)
     })
   }
 }
