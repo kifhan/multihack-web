@@ -4,7 +4,7 @@ var Y = require('yjs')
 require('y-memory')(Y)
 require('y-array')(Y)
 require('y-map')(Y)
-require('y-multihack')(Y)
+require('./y-multihack')(Y)
 require('y-text')(Y)
 
 var EventEmitter = require('events').EventEmitter
@@ -20,7 +20,7 @@ function RemoteManager (opts) {
   Voice = opts.voice || null
   opts.wrtc = opts.wrtc || null
   self.roomID = opts.room || 'welcome'
-  self.hostname = opts.hostname || 'https://quiet-shelf-57463.herokuapp.com'
+  self.hostname = opts.hostname || 'http://localhost:8080'
   self.nickname = opts.nickname || 'Guest'
   self.id = null
   self.yfs = null
