@@ -13,43 +13,56 @@ var User = require('./auth/user')
 function Multihack (config) {
   var self = this
   if (!(self instanceof Multihack)) return new Multihack(config)
+  // make it as an object.
   // 함수로 불러도 오브젝트로 생성해서 반환한다.
 
   config = config || {}
   // config: { hostname }
 
   Interface.on('openFile', function (e) {
-    // DOM에서 파일을 열때 호출한다.
+    // call when gui opens file.
+    // gui에서 파일을 열때 호출한다.
     if (Editor._workingFile) {
       if (Editor._workingFile.path === e.path) return
+      // ignores already opend file.
       // 이미 열려있는 파일을 다시 클릭하면 무시한다.
       console.log('switching file: ' + Editor._workingFile.path);
     }
     console.log('interface open file: ' + e.path);
     FileSystem.getFile(e.path).doc.setValue(self._remote.getContent(e.path))
+    // FileSystem is an virtual file system made with object(File, Folder) and array.
+    // doc is document model in CodeMirror. It states contents and options.
+    // self._remote is multihack-core. And it's controls network and realtime document sync(CRDT).
+    // for document sync, I use yjs module. Above getContent function is getting file from yjs document object(y-text).
     // FileSystem 오브젝트는 js object와 array로 만든 가상의 파일시스템이다.
     // doc은 CodeMirror 에서 사용하는 오브젝트 모델인데 문서 상태 및 내용을 저장한다.
     // self._remote (multihack-core)는 네트워크 및 CRDT 문서 동기화를 하는 모듈이다.
     // 문서 동기화 모델(yjs의 y-text)에서 해당 문서의 내용을 가져와서 파일시스템의 파일에 넣는다.
 
     Editor.open(e.path)
+    // Open a file on Editor. It brings file from FileSystem.
     // 에디터에서 파일을 연다. Editor 오브젝트 안에서는 FileSystem을 호출해서 파일 내용을 가져와서 연다.
     self._remote.setObserver(e.path + '.replydb','reply')
     self._remote.setObserver(e.path,'text')
+    // setting an observer for document sync.
     // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
     Reply.setReplies(e.path + '.replydb', Editor._cm, self._remote.getReplyContent(e.path + '.replydb'))
+    // Load and set reply data after file opens.
     // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
   })
 
   Interface.on('addFile', function (e) {
+    // call when gui add file on treeview
     // 파일/폴더를 생성하는 모달 창에서 파일을 클릭하면 호출한다.
     var created = FileSystem.mkfile(e.path)
+    // it ignores when it's same filename.
     // 같은 이름의 파일이 이미 있을 때는 무시한다.
     if (created) {
       Interface.treeview.addFile(e.parentElement, FileSystem.get(e.path))
       // DOM의 인터페이스에 파일을 추가한다.
       Editor.open(e.path)
       self._remote.createFile(e.path)
+      // create y-text data. it also creates replydb data.
       // 새 문서의 y-text를 만든다. createFile을 하면 replydb를 함께 만든다.
       self._remote.setObserver(e.path + '.replydb','reply')
       self._remote.setObserver(e.path,'text')
@@ -58,6 +71,7 @@ function Multihack (config) {
   })
 
   FileSystem.on('unzipFile', function (file) {
+    // call when user upload zip file project.
     // 프로젝트 파일을 zip 형식으로 업로드 하는 경우 호출한다.
     file.read(function (content) {
       self._remote.createFile(file.path, content)
@@ -67,6 +81,7 @@ function Multihack (config) {
   })
 
   Interface.on('addDir', function (e) {
+    // call when gui add directory
     // 파일/폴더를 생성하는 모달 창에서 폴더를 클릭하면 호출한다.
     var created = FileSystem.mkdir(e.path)
     if (created) {
@@ -76,11 +91,13 @@ function Multihack (config) {
   })
 
   Interface.on('removeDir', function (e) {
+    // call when gui delete directory
     // 폴더 삭제 버튼을 클릭하면 호출한다.
     var dir = FileSystem.get(e.path)
     var workingFile = Editor.getWorkingFile()
 
     Interface.confirmDelete(dir.name, function () {
+      // confirm deleting directory
       // 폴더 삭제 확인 모달 창을 띄우고 사용자가 확인하면 호출된다.
       Interface.treeview.remove(e.parentElement, dir)
       // 인터페이스에서 폴더이름을 지운다.
@@ -96,6 +113,7 @@ function Multihack (config) {
   })
 
   Interface.on('deleteCurrent', function (e) {
+    // call when delete file that currently opened on Editor.
     // 열려있는 파일 하단에 휴지통 버튼을 클릭하면 호출한다.
     // TODO: 열려있지 않은 파일을 지우는 인터페이스, 기능을 추가한다.
     var workingFile = Editor.getWorkingFile()
@@ -121,6 +139,7 @@ function Multihack (config) {
   self.hostname = config.hostname
 
   Interface.on('saveAs', function (saveType) {
+    // exports project as Zip file
     // 인터페이스에서 zip으로 내보내기를 클릭하면 호출한다.
     FileSystem.getContained('').forEach(function (file) {
       file.write(self._remote.getContent(file.path))
@@ -137,6 +156,8 @@ function Multihack (config) {
   })
 
   Interface.on('deploy', function () {
+    // call when user click deploy button.
+    // It use HyperHost module to run node.js app on browser.
     // 인터페이스에서 deploy 버튼을 클릭하면 호출한다.
     // HyperHost는 브라우저 안에 none.js 환경을 에뮬레이트해서 node.js 앱을 실행할 수 있게 해주는 모듈이다.
     HyperHostWrapper.on('error', function (err) {
@@ -150,6 +171,7 @@ function Multihack (config) {
     HyperHostWrapper.deploy(FileSystem.getTree())
   })
 
+// Originaly on Multihack, it show modal to write room id and user name, but we doesn't need it so I hide it.
 // 앱을 시작했을 때 모달창이 떠서 룸 id, user id 등을 고르는 부분이 있었는데 필요없어서 숨겼다.
   Interface.hideOverlay()
   if (self.embed) {
@@ -165,6 +187,7 @@ function Multihack (config) {
       //     })
       //   }
       // })
+      // also hide zip project file load funciton.
       // 앱을 시작할 때 프로젝트 ZIP 파일을 로드하는 기능을 껐다.
       Interface.treeview.rerender(tree)
     })
@@ -173,13 +196,17 @@ function Multihack (config) {
 
 Multihack.prototype._initRemote = function (cb) {
   var self = this
+  // This use multihack-core to control network and realtime document sync(CRDT).
   // 네트워트 및 CRDT 협업 동기화 기능을 시작한다.
   function onRoom (data) {
+    // overlaps funciton blocks to init room with conditional safety check.
     // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키려고 함수를 2중으로 감쌌다.
     self.roomID = data.room
     Interface.setRoom(self.roomID)
+    // putting room id to gui
     // 인터페이스에 룸 id를 삽입한다.
     window.history.pushState('Multihack', lg('history_item', {room: self.roomID}), '?room=' + self.roomID + (self.embed ? '&embed=true' : ''))
+    // set new url with room id on browser.
     // 룸 id에 맞춰 브라우저 주소창의 url을 고친다.
     self.nickname = data.nickname
     self._remote = new Remote({
@@ -192,11 +219,13 @@ Multihack.prototype._initRemote = function (cb) {
     // 네트워트 및 CRDT 협업 동기화 기능 모듈인 multihack-core를 시작한다.
 
     self._remote.posFromIndex = function (filePath, index, cb) {
+      // tracking user's text cursor. cb is callback function.
       // 사용자가 현재 편집중인 문서 상의 커서 위치를 추적한다. cb는 callback이다. cb에 등록한 함수에 에디터 커서 위치를 인자로 보낸다.
       cb(FileSystem.getFile(filePath).doc.posFromIndex(index))
     }
 
     self._remote.replyUpdate = function (filePath, replies, cb) {
+      // tracking pos of reply. Cause it changes when linebreaks.
       // 현재 문서 상의 댓글 위치를 추적한다. 문서의 줄바꿈 상태가 수정되었을 때 댓글의 위치를 조정하려고 만들었다. cb는 callback이다.
       cb(Reply.getLineChange(Editor._cm, replies))
     }
@@ -215,14 +244,17 @@ Multihack.prototype._initRemote = function (cb) {
     })
 
     self._remote.on('changeSelection', function (selections) {
+      // sync text cursor of other user.
       // 협업 중인 다른 사용자의 커서가 현재 사용자의 문서 에디터에 나타나도록 한다.
       Editor.highlight(selections)
     })
     self._remote.on('changeFile', function (data) {
+      // sync text of other user on Editor.
       // 협업 중인 다른 사용자가 작업한 내용을 현재 사용자의 문서 에디터에 반영한다.
       Editor.change(data.filePath, data.change)
     })
     self._remote.on('deleteFile', function (data) {
+      // sync deletion of file.
       // 협업 중인 다른 사용자가 파일을 지운 경우 동기화 한다.
       var parentElement = Interface.treeview.getParentElement(data.filePath)
       var workingFile = Editor.getWorkingFile()
@@ -237,6 +269,7 @@ Multihack.prototype._initRemote = function (cb) {
       FileSystem.delete(data.filePath)
     })
     self._remote.on('createFile', function (data) {
+      // sync creation of file
       // 협업 중인 다른 사용자가 파일을 생성한 경우 동기화 한다.
       FileSystem.getFile(data.filePath).write(data.content)
       Interface.treeview.rerender(FileSystem.getTree())
@@ -251,16 +284,19 @@ Multihack.prototype._initRemote = function (cb) {
       // }
     })
     self._remote.on('createDir', function (data) {
+      // sync creation of directory.
       // 협업 중인 다른 사용자가 폴더을 생성한 경우 동기화 한다.
       FileSystem.mkdir(data.path)
       Interface.treeview.rerender(FileSystem.getTree())
     })
     self._remote.on('lostPeer', function (peer) {
+      // notify when other user disconnected.
       // 협업중인 사용자가 나가면 알림을 띄운다.
       if (self.embed) return
       Interface.flashTooltip('tooltip-lostpeer', lg('lost_connection', {nickname: peer.metadata.nickname}))
     })
     self._remote.on('changeReply', function (data) {
+      // sync change of reply.
       // 협업 중인 사용자가 댓글을 달면 현재 사용자의 문서 에디터에 동기화한다.
       // filePath, type, name, value, replies
       if (data.type === 'insert') {
@@ -295,6 +331,7 @@ Multihack.prototype._initRemote = function (cb) {
       }
     })
 
+    // shoot event from Editor to network.
     Editor.on('change', function (data) {
       // 현재 사용자가 에디터에서 문서 수정을 했을 때 내용을 네트워크에 보낸다.
       self._remote.changeFile(data.filePath, data.change)
@@ -311,6 +348,7 @@ Multihack.prototype._initRemote = function (cb) {
     if (typeof cb !== 'undefined') cb()
   }
 
+// Create room id if it doesn't have one.
 // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키고 룸id가 있으면 해당 id로 네트워크를 실행시킨다.
   // Random starting room (to be changed) or from query
   // if (!self.roomID && !self.embed) {
