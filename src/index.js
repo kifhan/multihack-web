@@ -1,3 +1,8 @@
+// y-js browser debug state
+
+// localStorage.debug = 'y:*,MH:*'
+// Turn on debug log
+
 var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
 var Editor = require('./editor/editor')

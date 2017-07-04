@@ -1,11 +1,15 @@
 /* globals window */
 
+const debug = require('debug')('MH:core')
+
 var Y = require('yjs')
 require('y-memory')(Y)
 require('y-array')(Y)
 require('y-map')(Y)
+// require('./websockets-client')(Y)
 require('./y-multihack')(Y)
 require('y-text')(Y)
+require('y-richtext')(Y)
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
@@ -56,6 +60,15 @@ function RemoteManager (opts) {
       delete tokens[key]
     }
   }
+  self.onceReady = function (f) {
+    if (!self.yfs) {
+      self.once('ready', function () {
+        f()
+      })
+    } else {
+      f()
+    }
+  }
 
   Y({
     db: {
@@ -63,6 +76,7 @@ function RemoteManager (opts) {
     },
     connector: {
       name: 'multihack',
+      // name: 'websockets-client',
       room: self.roomID,
       hostname: self.hostname,
       nickname: self.nickname,
@@ -79,7 +93,6 @@ function RemoteManager (opts) {
           }
         } else if (event === 'peers') {
           self.peers = value.peers
-          self.mustForward = value.mustForward
         } else if (event === 'lostPeer') {
           self._onLostPeer(value)
         }
@@ -95,6 +108,11 @@ function RemoteManager (opts) {
     self.yfs = y.share.dir_tree
     self.ySelections = y.share.selections
 
+    debug('load yfs: '+JSON.stringify(self.yfs.keys()))
+    self.yfs.keys().forEach(function(path) {
+      self.fileoperation('add', path, self.yfs.get(path))      
+    })
+
     self.ySelections.observe(function (event) {
       event.values.forEach(function (sel) {
         if (sel.id !== self.id || !self.id) {
@@ -106,55 +124,53 @@ function RemoteManager (opts) {
     })
 
     self.yfs.observe(function (event) {
-      var filePath = event.name
-
-      if (event.type === 'add') { // create file/folder
-
-        if (event.value instanceof Y.Text.typeDefinition.class) {
-          self.emit('createFile', {
-            filePath: filePath,
-            content: event.value.toString()
-          })
-        } else if (event.value instanceof Y.Array.typeDefinition.class) {
-          var pathdiv = filePath.split('.')
-          if (pathdiv[pathdiv.length - 1] === 'replydb') {
-            // replydb does not saved on file system.
-          }
-        } else {
-          self.emit('createDir', {
-            path: filePath
-          })
-        }
-      } else if (event.type === 'update') {
-        // a file with the same name has been added
-        self.emit('deleteFile', {
-          filePath: filePath
-        })
-        if (event.value instanceof Y.Text.typeDefinition.class) {
-          self.emit('createFile', {
-            filePath: filePath,
-            content: event.value.toString()
-          })
-        } else if (event.value instanceof Y.Array.typeDefinition.class) {
-          var pathdiv = filePath.split('.')
-          if (pathdiv[pathdiv.length - 1] === 'replydb') {
-            // replydb does not saved on file system.
-          }
-        } else {
-          self.emit('createDir', {
-            filePath: filePath
-          })
-        }
-      } else if (event.type === 'delete') { // delete
-        self.emit('deleteFile', {
-          filePath: filePath
-        })
-      }
+      self.fileoperation(event.type, event.name, eveant.value)
     })
     self.emit('ready')
   })
 }
-
+RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
+  var self = this
+  if (optype === 'add') { // create file/folder
+    if (content instanceof Y.Text.typeDefinition.class) {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content.toString()
+      })
+    } else if (content instanceof Y.Array.typeDefinition.class) {
+      var pathdiv = filePath.split('.')
+      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
+      }
+    } else {
+      self.emit('createDir', {
+        path: filePath
+      })
+    }
+  } else if (optype === 'update') {
+    // a file with the same name has been added
+    self.emit('deleteFile', {
+      filePath: filePath
+    })
+    if (content instanceof Y.Text.typeDefinition.class) {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content.toString()
+      })
+    } else if (content instanceof Y.Array.typeDefinition.class) {
+      var pathdiv = filePath.split('.')
+      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
+      }
+    } else {
+      self.emit('createDir', {
+        filePath: filePath
+      })
+    }
+  } else if (optype === 'delete') { // delete
+    self.emit('deleteFile', {
+      filePath: filePath
+    })
+  }
+}
 RemoteManager.prototype.setObserver = function (filePath, targetstr) {
   var self = this
   setTimeout(function() {
@@ -199,20 +215,24 @@ RemoteManager.prototype.getReplyContent = function (filePath) {
 
 RemoteManager.prototype.createFile = function (filePath, contents) {
   var self = this
-  var pathdiv = filePath.split('.')
-  if (pathdiv[pathdiv.length - 1] === 'ymap') {
-    self.yfs.set(filePath, Y.Map)
-    // TODO: make a file type for richtext, trello board, etc.
-  } else {
-    self.yfs.set(filePath + '.replydb', Y.Array)
-    self.yfs.set(filePath, Y.Text)
-    insertChunked(self.yfs.get(filePath), 0, contents || '')
-  }
+  self.onceReady(function () {
+    var pathdiv = filePath.split('.')
+    if (pathdiv[pathdiv.length - 1] === 'ymap') {
+      self.yfs.set(filePath, Y.Map)
+      // TODO: make a file type for richtext, trello board, etc.
+    } else {
+      self.yfs.set(filePath + '.replydb', Y.Array)
+      self.yfs.set(filePath, Y.Text)
+      insertChunked(self.yfs.get(filePath), 0, contents || '')
+    }
+  })
 }
 
 RemoteManager.prototype.createDir = function (filePath, contents) {
   var self = this
-  self.yfs.set(filePath, 'DIR')
+  self.onceReady(function () {
+    self.yfs.set(filePath, 'DIR')
+  })
 }
 
 function insertChunked (ytext, start, str) {
@@ -236,94 +256,104 @@ function chunkString (str, size) {
 
 RemoteManager.prototype.replaceFile = function (oldPath, newPath) {
   var self = this
-  self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
-  self.yfs.set(newPath, self.yfs.get(oldPath))
+  self.onceReady(function () {
+    self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
+    self.yfs.set(newPath, self.yfs.get(oldPath))
+  })
 }
 RemoteManager.prototype.deleteFile = function (filePath) {
   var self = this
-  self.yfs.delete(filePath)
-  self.yfs.delete(filePath + '.replydb')
+  self.onceReady(function () {
+    self.yfs.delete(filePath)
+    self.yfs.delete(filePath + '.replydb')
+  })
 }
 
 RemoteManager.prototype.changeFile = function (filePath, delta) {
   var self = this
-  self.mutualExcluse(filePath, function () {
-    var ytext = self.yfs.get(filePath)
-    if (!ytext) return
+  self.onceReady(function () {
+    self.mutualExcluse(filePath, function () {
+      var ytext = self.yfs.get(filePath)
+      if (!ytext) return
 
-    // apply the delta to the ytext instance
-    var start = delta.start
+      // apply the delta to the ytext instance
+      var start = delta.start
 
-    // apply the delete operation first
-    if (delta.removed.length > 0) {
-      var delLength = 0
-      for (var j = 0; j < delta.removed.length; j++) {
-        delLength += delta.removed[j].length
+      // apply the delete operation first
+      if (delta.removed.length > 0) {
+        var delLength = 0
+        for (var j = 0; j < delta.removed.length; j++) {
+          delLength += delta.removed[j].length
+        }
+        // "enter" is also a character in our case
+        delLength += delta.removed.length - 1
+        ytext.delete(start, delLength)
       }
-      // "enter" is also a character in our case
-      delLength += delta.removed.length - 1
-      ytext.delete(start, delLength)
-    }
 
-    // apply insert operation
-    insertChunked(ytext, start, delta.text.join('\n'))
+      // apply insert operation
+      insertChunked(ytext, start, delta.text.join('\n'))
+    })
   })
 }
 
 RemoteManager.prototype.changeReply = function (filePath, optype, opval) {
   var self = this
-  self.mutualExcluse(filePath, function () {
-    var replydb = self.yfs.get(filePath)
-    if (optype === 'insert') {
-      var ridx = replydb.toArray().length
-      replydb.push([Y.Map])
-      var reply = replydb.get(ridx)
-      reply.set('user_id', opval.user_id)
-      reply.set('user_name', opval.user_name)
-      reply.set('user_picture', opval.user_picture)
-      reply.set('reply_id', opval.reply_id)
-      reply.set('insert_time', opval.insert_time)
-      reply.set('level', opval.level)
-      reply.set('order', opval.order)
-      reply.set('line_num', opval.line_num)
-      reply.set('content', opval.content)
-      console.log('reply sent by you: ' + replydb.get(ridx).keys())
-    } else if (optype === 'delete') {
-      for (var i = 0; i < replydb.toArray().length; i++) {
-        if (replydb.get(i).get('reply_id') === opval.reply_id) {
-          replydb.delete(i, 1)
-          break
+  self.onceReady(function () {
+    self.mutualExcluse(filePath, function () {
+      var replydb = self.yfs.get(filePath)
+      if (optype === 'insert') {
+        var ridx = replydb.toArray().length
+        replydb.push([Y.Map])
+        var reply = replydb.get(ridx)
+        reply.set('user_id', opval.user_id)
+        reply.set('user_name', opval.user_name)
+        reply.set('user_picture', opval.user_picture)
+        reply.set('reply_id', opval.reply_id)
+        reply.set('insert_time', opval.insert_time)
+        reply.set('level', opval.level)
+        reply.set('order', opval.order)
+        reply.set('line_num', opval.line_num)
+        reply.set('content', opval.content)
+        console.log('reply sent by you: ' + replydb.get(ridx).keys())
+      } else if (optype === 'delete') {
+        for (var i = 0; i < replydb.toArray().length; i++) {
+          if (replydb.get(i).get('reply_id') === opval.reply_id) {
+            replydb.delete(i, 1)
+            break
+          }
+        }
+      } else if (optype === 'update') {
+        for (var i = 0; i < replydb.toArray().length; i++) {
+          var reply = replydb.get(i)
+          if (reply.get('reply_id') === opval.reply_id) {
+            if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
+            if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
+            if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
+            if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
+            break
+          }
         }
       }
-    } else if (optype === 'update') {
-      for (var i = 0; i < replydb.toArray().length; i++) {
-        var reply = replydb.get(i)
-        if (reply.get('reply_id') === opval.reply_id) {
-          if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
-          if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
-          if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
-          if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
-          break
-        }
-      }
-    }
+    })
   })
 }
 
 RemoteManager.prototype.changeSelection = function (data) {
   var self = this
-  // remove our last select first
-  if (self.lastSelection !== null) {
-    self.ySelections.toArray().forEach(function (a, i) {
-      if (a.tracker === self.lastSelection) {
-        self.ySelections.delete(i)
-      }
-    })
-  }
-  data.id = self.id
-  data.tracker = Math.random()
-  self.lastSelection = data.tracker
-  self.ySelections.push([data])
+  self.onceReady(function () {
+    // remove our last select first
+    if (self.lastSelection !== null) {
+      self.ySelections.toArray().forEach(function (a, i) {
+        if (a.tracker === self.lastSelection) {
+          self.ySelections.delete(i)
+        }
+      })
+    }
+    data.id = self.id
+    data.tracker = Math.random()
+    self.lastSelection = data.tracker
+    self.ySelections.push([data])
+  })
 }
 
 RemoteManager.prototype._onYTextAdd = function (filePath, event) {

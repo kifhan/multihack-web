@@ -1,48 +1,79 @@
 /* globals Y */
 
 var Y = require('yjs')
+var define = global.define
+global.define = null
 var Io = require('socket.io-client')
+global.define = define
 var SimpleSignalClient = require('simple-signal-client')
 var Throttle = require('stream-throttle').Throttle
-var Wire = require('./multihack-wire')
+var Wire = require('multihack-wire')
 var getBrowserRTC = require('get-browser-rtc')
 
 class Connector extends Y.AbstractConnector {
-  constructor (y, opts) {
-    super(y, opts)
-
+  constructor (y, options) {
+    options = options || {}
+    options = Y.utils.copyObject(options)
+    options.role = 'slave'
+    options.debug = true
+    options.forwardToSyncingClients = options.forwardToSyncingClients || false
+    // options.preferUntransformed = true
+    super(y, options)
     var self = this
-    if (!(self instanceof Connector)) return new Connector(y, opts)
+    if (!(self instanceof Connector)) return new Connector(y, options)
 
-    opts = opts || {}
-    opts.role = 'slave'
-    self.room = opts.room || 'welcome'
-    self.wrtc = opts.wrtc || null
-    self.hostname = opts.hostname || 'https://quiet-shelf-57463.herokuapp.com'
-    self.nickname = opts.nickname
-    self.events = opts.events || function (event, value) {}
-    self.id = null
+    self.options = options
+    self.room = options.room || 'welcome'
+    self.wrtc = options.wrtc || null
+    self.hostname = options.hostname
+    self.nickname = options.nickname
+    self.events = options.events || function (event, value) {}
+    self.socketID = null
     self.queue = []
     self.peers = []
+    self.socket = new Io(self.hostname)
 
-    self.reconnect()
+    self._setupSocket()
+    self.nop2p = true
+    // if (!getBrowserRTC()) {
+    //   console.log('No WebRTC support: turn it to socket client.')
+    //   self.nop2p = true
+    // } else {
+    //   self.nop2p = false
+    //   self._setupP2P()
+    // }
+    // self.peers = []
+    // self.events('peers', { peers: self.peers })
   }
 }
-
 
 Connector.prototype._setupSocket = function () {
   var self = this
 
-  self._socket.on('forward', function (data) {
-    if (data.event === 'yjs') {
-      self.receiveMessage(data.id, data.message)
+  self.socket.on('connect', function() {
+    console.log('connected to socket server!')
+    self.socket.emit('joinRoom', {room: self.room, nickname: self.nickname, nop2p: self.nop2p })
+    self.userJoined('server', 'master')
+  })
+  
+  self.socket.on('yjsSocketMessage', function (message, id) {
+    if (message.type != null) {
+      if (message.type === 'sync done') {
+        self.socketID = self.socket.id
+        self.setUserId(self.socketID)
+        self.events('id', {
+          id: self.socketID,
+          nop2p: self.nop2p
+        })
+      }
+      if (message.room === self.room) self.receiveMessage('server', message)
     }
   })
 
-  self._socket.on('peer-join', function (data) {
+  self.socket.on('peer-join', function (data) {
     if (!self.nop2p && !data.nop2p) return // will connect p2p
 
-    var fakePeer = {
+    var fakePeer = { // This is socket client, to show them in client list, we made fakepeer.
       metadata: {
         nickname: data.nickname
       },
@@ -51,12 +82,10 @@ Connector.prototype._setupSocket = function () {
     }
     self.peers.push(fakePeer)
 
-    if (data.nop2p) self.mustForward++
-
     self._onGotPeer(fakePeer)
   })
 
-  self._socket.on('peer-leave', function (data) {
+  self.socket.on('peer-leave', function (data) {
     if (!self.nop2p && !data.nop2p) return // will disconnect p2p
 
     for (var i=0; i<self.peers.length; i++) {
@@ -66,30 +95,17 @@ Connector.prototype._setupSocket = function () {
         break
       }
     }
-    if (data.nop2p) self.mustForward--
   })
 
-  self._socket.on('id', function (id) {
-    if (self.id) return
-    self.id = id
-    self.events('id', {
-      id: self.id,
-      nop2p: self.nop2p
-    })
-    self.setUserId(id)
-
-    self._socket.emit('join', {
-      room: self.room,
-      nickname: self.nickname,
-      nop2p: self.nop2p
-    })
+  self.socket.on('disconnect', function (peer) {
+    Y.AbstractConnector.prototype.disconnect.call(self)
   })
 }
 
 Connector.prototype._setupP2P = function (room, nickname) {
   var self = this
 
-  self._client = new SimpleSignalClient(self._socket, {
+  self._client = new SimpleSignalClient(self.socket, {
     room: self.room
   })
   self.events('client', self._client)
@@ -98,18 +114,18 @@ Connector.prototype._setupP2P = function (room, nickname) {
 
     self.events('voice', {
       client: self._client,
-      socket: self._socket
+      socket: self.socket
     })
 
-    if (!self.id) {
-      self.setUserId(self._client.id)
-      self.id = self._client.id
-      self.events('id', {
-        id: self.id,
-        nop2p: self.nop2p
-      })
-    }
-
+    // if (!self.socketID) {
+    //   self.setUserId(self._client.id)
+    //   self.socketID = self._client.id
+    //   self.events('id', {
+    //     id: self.socketID,
+    //     nop2p: self.nop2p
+    //   })
+    // }
+    peerIDs = peerIDs || []
     for (var i=0; i<peerIDs.length; i++) {
       if (peerIDs[i] === self._client.id) continue
       self._client.connect(peerIDs[i], {
@@ -195,58 +211,11 @@ Connector.prototype._destroyPeer = function (peer) {
   self._onLostPeer(peer)
 }
 
-Connector.prototype._sendAllPeers = function (event, message) {
-  var self = this
-
-  if (self.nop2p || self.mustForward > 0) {
-    self._socket.emit('forward', {
-      event: event,
-      target: self.room,
-      message: message
-    })
-    return
-  }
-
-  for (var i=0; i<self.peers.length; i++) {
-    if (!self.peers[i].nop2p) {
-      self.peers[i].wire[event](message)
-    }
-  }
-}
-
-Connector.prototype._sendOnePeer = function (id, event, message) {
-  var self = this
-
-  if (self.nop2p) {
-    self._socket.emit('forward', {
-      target: id,
-      event: event,
-      message: message
-    })
-    return
-  }
-
-  for (var i=0; i<self.peers.length; i++) {
-    if (self.peers[i].id !== id) continue
-    if (self.peers[i].nop2p) {
-      self._socket.emit('forward', {
-        target: id,
-        event: event,
-        message: message
-      })
-    } else {
-      self.peers[i].wire[event](message)
-    }
-    break
-  }
-}
-
 Connector.prototype._onGotPeer = function (peer) {
   var self = this
 
   self.events('peers', {
-    peers: self.peers,
-    mustForward: self.mustForward
+    peers: self.peers
   })
   self.events('gotPeer', peer)
   self.userJoined(peer.id, 'master')
@@ -256,8 +225,7 @@ Connector.prototype._onLostPeer = function (peer) {
   var self = this
 
   self.events('peers', {
-    peers: self.peers,
-    mustForward: self.mustForward
+    peers: self.peers
   })
   self.events('lostPeer', peer)
   self.userLeft(peer.id)
@@ -265,13 +233,17 @@ Connector.prototype._onLostPeer = function (peer) {
 
 Connector.prototype.disconnect = function () {
   var self = this
+  self.socket.emit('leaveRoom', self.room)
+  self.socket.disconnect()
+}
 
+Connector.prototype.destroy = function () {
+  this.disconnect()
+  
+  // destroy p2p connection
   for (var i=0; i<self.peers.length; i++) {
-    if (self.peers[i].nop2p || self.nop2p) {
-      self.peers[i] = null
-    } else {
-      self.peers[i].destroy()
-    }
+    if (self.peers[i].nop2p || self.nop2p) self.peers[i] = null
+    else self.peers[i].destroy()
   }
 
   self.voice = null
@@ -279,55 +251,54 @@ Connector.prototype.disconnect = function () {
   self.nop2p = null
   self.peers = []
   self.events('peers', {
-    peers: self.peers,
-    mustForward: self.mustForward
+    peers: self.peers
   })
   self._handlers = null
-  self._socket.disconnect()
-  self._socket = null
+
+  if (!this.options.socket) {
+    this.socket.destroy()
+  }
+  this.socket = null
 }
 
 Connector.prototype.reconnect = function () {
   var self = this
-
-  self._socket = new Io(self.hostname)
-  self.peers = []
-  self.events('peers', {
-    peers: self.peers,
-    mustForward: self.mustForward
-  })
-  self.mustForward = 0 // num of peers that are nop2p
-
-  self._setupSocket()
-
-  if (!getBrowserRTC()) {
-    console.warn('No WebRTC support')
-    self.nop2p = true
-  } else {
-    self.nop2p = false
-    self._setupP2P()
-  }
-}
-
-Connector.prototype.sendMeta = function (id, event, message) {
-  var self = this
-  if (event === 'yjs') throw new Error('Metadata cannot use the "yjs" event!')
-  self._sendOnePeer(id, event, message)
+  self.socket.connect()
 }
 
 // only yjs should call this!
 Connector.prototype.send = function (id, message) {
   var self = this
-  self._sendOnePeer(id, 'yjs', message)
+  message.room = self.room
+  console.log('client send to one')
+
+  self.socket.emit('yjsSocketMessage', message, id)
+  if(self.nop2p) return;
+  for (var i=0; i<self.peers.length; i++) {
+    if (self.peers[i].id !== id) continue
+    if (!self.peers[i].nop2p) {
+      self.peers[i].wire.yjs(message)
+    }
+    break
+  }
 }
 
 Connector.prototype.broadcast = function (message) {
   var self = this
-  self._sendAllPeers('yjs', message)
+  message.room = self.room
+  console.log('client broadcast')
+
+  self.socket.emit('yjsSocketMessage', message)
+  if(self.nop2p) return;
+  for (var i=0; i<self.peers.length; i++) {
+    if (!self.peers[i].nop2p) {
+      self.peers[i].wire.yjs(message)
+    }
+  }
 }
 
 Connector.prototype.isDisconnected = function () {
-  return false
+  return this.socket.disconnected
 }
 
 function extend (Y) {
