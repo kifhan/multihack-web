@@ -4,7 +4,9 @@ var Modal = require('./modal')
 var TreeView = require('./treeview')
 var PeerGraph = require('p2p-graph')
 var cuid = require('cuid')
+var PaneManager = require('./panemanager')
 var lang = require('./lang/lang')
+var split = require('split.js')
 var lg = lang.get.bind(lang)
 
 inherits(Interface, EventEmitter)
@@ -48,12 +50,12 @@ function Interface () {
   })
 
   // Setup contrast toggle
-  var contrast = false
-  document.getElementById('image-contrast').addEventListener('click', function () {
-    contrast = !contrast
-    document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
-    document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
-  })
+  // var contrast = false
+  // document.getElementById('image-contrast').addEventListener('click', function () {
+  //   contrast = !contrast
+  //   document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
+  //   document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
+  // })
 
   // Setup save button
   document.getElementById('save').addEventListener('click', function () {
@@ -76,9 +78,18 @@ function Interface () {
   })
 
   // Setup delete button
-  document.getElementById('delete').addEventListener('click', function () {
-    self.emit('deleteCurrent')
+  // document.getElementById('delete').addEventListener('click', function () {
+  //   self.emit('deleteCurrent')
+  // })
+
+  self.workspacePane = new PaneManager({
+    container: document.getElementById('main-workspace')
   })
+  
+  // split(["#sidebar", "#main-workspace"], { // 재대로 안된다.
+  //   gutterSize: 4,
+  //   cursor: "col-resize"
+  // })
 }
 
 Interface.prototype.newFileDialog = function (path, cb) {
@@ -92,7 +103,7 @@ Interface.prototype.newFileDialog = function (path, cb) {
   modal.on('done', function (e) {
     modal.close()
     var name = e.inputs[0].value
-    var type = e.target.dataset['type']
+    var type = e.target.dataset.type
     if (!name) {
       name = (type === 'dir' ? lg('new_folder') : lg('new_file')) + '-' + cuid().slice(-7,-1)
     }

@@ -238,6 +238,7 @@ Connector.prototype.disconnect = function () {
 }
 
 Connector.prototype.destroy = function () {
+  var self = this
   this.disconnect()
   
   // destroy p2p connection

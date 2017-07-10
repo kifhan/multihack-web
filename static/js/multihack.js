@@ -20474,7 +20474,7 @@ Polling.prototype.uri = function () {
   return schema + '://' + (ipv6 ? '[' + this.hostname + ']' : this.hostname) + port + this.path + query;
 };
 
-},{"../transport":315,"component-inherit":12,"debug":310,"engine.io-parser":322,"parseqs":345,"xmlhttprequest-ssl":321,"yeast":402}],320:[function(require,module,exports){
+},{"../transport":315,"component-inherit":12,"debug":310,"engine.io-parser":322,"parseqs":345,"xmlhttprequest-ssl":321,"yeast":403}],320:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies.
@@ -20764,7 +20764,7 @@ WS.prototype.check = function () {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../transport":315,"component-inherit":12,"debug":310,"engine.io-parser":322,"parseqs":345,"ws":8,"yeast":402}],321:[function(require,module,exports){
+},{"../transport":315,"component-inherit":12,"debug":310,"engine.io-parser":322,"parseqs":345,"ws":8,"yeast":403}],321:[function(require,module,exports){
 (function (global){
 // browser shim for xmlhttprequest module
 
@@ -22793,7 +22793,7 @@ module.exports = function (constraints, cb) {
     });
 };
 
-},{"webrtc-adapter":387}],329:[function(require,module,exports){
+},{"webrtc-adapter":388}],329:[function(require,module,exports){
 (function (global){
 /* global Blob File */
 
@@ -24767,7 +24767,7 @@ P2PGraph.prototype.getLinkIndex = function (source, target) {
   return -1
 }
 
-},{"d3":309,"debug":310,"events":325,"inherits":334,"throttleit":381}],344:[function(require,module,exports){
+},{"d3":309,"debug":310,"events":325,"inherits":334,"throttleit":382}],344:[function(require,module,exports){
 (function (global){
 /**
  * JSON parse.
@@ -26341,7 +26341,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":351,"./internal/streams/BufferList":356,"./internal/streams/destroy":357,"./internal/streams/stream":358,"_process":348,"core-util-is":307,"events":325,"inherits":334,"isarray":336,"process-nextick-args":347,"safe-buffer":364,"string_decoder/":380,"util":8}],354:[function(require,module,exports){
+},{"./_stream_duplex":351,"./internal/streams/BufferList":356,"./internal/streams/destroy":357,"./internal/streams/stream":358,"_process":348,"core-util-is":307,"events":325,"inherits":334,"isarray":336,"process-nextick-args":347,"safe-buffer":364,"string_decoder/":381,"util":8}],354:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -27223,7 +27223,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":351,"./internal/streams/destroy":357,"./internal/streams/stream":358,"_process":348,"core-util-is":307,"inherits":334,"process-nextick-args":347,"safe-buffer":364,"util-deprecate":383}],356:[function(require,module,exports){
+},{"./_stream_duplex":351,"./internal/streams/destroy":357,"./internal/streams/stream":358,"_process":348,"core-util-is":307,"inherits":334,"process-nextick-args":347,"safe-buffer":364,"util-deprecate":384}],356:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -30812,7 +30812,7 @@ Socket.prototype.compress = function (compress) {
   return this;
 };
 
-},{"./on":370,"component-bind":10,"component-emitter":11,"debug":310,"parseqs":345,"socket.io-parser":374,"to-array":382}],372:[function(require,module,exports){
+},{"./on":370,"component-bind":10,"component-emitter":11,"debug":310,"parseqs":345,"socket.io-parser":374,"to-array":383}],372:[function(require,module,exports){
 (function (global){
 
 /**
@@ -31458,6 +31458,544 @@ function isBuf(obj) {
 },{}],376:[function(require,module,exports){
 arguments[4][330][0].apply(exports,arguments)
 },{"dup":330}],377:[function(require,module,exports){
+/*! Split.js - v1.3.5 */
+
+(function (global, factory) {
+	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+	typeof define === 'function' && define.amd ? define(factory) :
+	(global.Split = factory());
+}(this, (function () { 'use strict';
+
+// The programming goals of Split.js are to deliver readable, understandable and
+// maintainable code, while at the same time manually optimizing for tiny minified file size,
+// browser compatibility without additional requirements, graceful fallback (IE8 is supported)
+// and very few assumptions about the user's page layout.
+var global = window;
+var document = global.document;
+
+// Save a couple long function names that are used frequently.
+// This optimization saves around 400 bytes.
+var addEventListener = 'addEventListener';
+var removeEventListener = 'removeEventListener';
+var getBoundingClientRect = 'getBoundingClientRect';
+var NOOP = function () { return false; };
+
+// Figure out if we're in IE8 or not. IE8 will still render correctly,
+// but will be static instead of draggable.
+var isIE8 = global.attachEvent && !global[addEventListener];
+
+// This library only needs two helper functions:
+//
+// The first determines which prefixes of CSS calc we need.
+// We only need to do this once on startup, when this anonymous function is called.
+//
+// Tests -webkit, -moz and -o prefixes. Modified from StackOverflow:
+// http://stackoverflow.com/questions/16625140/js-feature-detection-to-detect-the-usage-of-webkit-calc-over-calc/16625167#16625167
+var calc = (['', '-webkit-', '-moz-', '-o-'].filter(function (prefix) {
+    var el = document.createElement('div');
+    el.style.cssText = "width:" + prefix + "calc(9px)";
+
+    return (!!el.style.length)
+}).shift()) + "calc";
+
+// The second helper function allows elements and string selectors to be used
+// interchangeably. In either case an element is returned. This allows us to
+// do `Split([elem1, elem2])` as well as `Split(['#id1', '#id2'])`.
+var elementOrSelector = function (el) {
+    if (typeof el === 'string' || el instanceof String) {
+        return document.querySelector(el)
+    }
+
+    return el
+};
+
+// The main function to initialize a split. Split.js thinks about each pair
+// of elements as an independant pair. Dragging the gutter between two elements
+// only changes the dimensions of elements in that pair. This is key to understanding
+// how the following functions operate, since each function is bound to a pair.
+//
+// A pair object is shaped like this:
+//
+// {
+//     a: DOM element,
+//     b: DOM element,
+//     aMin: Number,
+//     bMin: Number,
+//     dragging: Boolean,
+//     parent: DOM element,
+//     isFirst: Boolean,
+//     isLast: Boolean,
+//     direction: 'horizontal' | 'vertical'
+// }
+//
+// The basic sequence:
+//
+// 1. Set defaults to something sane. `options` doesn't have to be passed at all.
+// 2. Initialize a bunch of strings based on the direction we're splitting.
+//    A lot of the behavior in the rest of the library is paramatized down to
+//    rely on CSS strings and classes.
+// 3. Define the dragging helper functions, and a few helpers to go with them.
+// 4. Loop through the elements while pairing them off. Every pair gets an
+//    `pair` object, a gutter, and special isFirst/isLast properties.
+// 5. Actually size the pair elements, insert gutters and attach event listeners.
+var Split = function (ids, options) {
+    if ( options === void 0 ) options = {};
+
+    var dimension;
+    var clientDimension;
+    var clientAxis;
+    var position;
+    var paddingA;
+    var paddingB;
+    var elements;
+
+    // All DOM elements in the split should have a common parent. We can grab
+    // the first elements parent and hope users read the docs because the
+    // behavior will be whacky otherwise.
+    var parent = elementOrSelector(ids[0]).parentNode;
+    var parentFlexDirection = global.getComputedStyle(parent).flexDirection;
+
+    // Set default options.sizes to equal percentages of the parent element.
+    var sizes = options.sizes || ids.map(function () { return 100 / ids.length; });
+
+    // Standardize minSize to an array if it isn't already. This allows minSize
+    // to be passed as a number.
+    var minSize = options.minSize !== undefined ? options.minSize : 100;
+    var minSizes = Array.isArray(minSize) ? minSize : ids.map(function () { return minSize; });
+    var gutterSize = options.gutterSize !== undefined ? options.gutterSize : 10;
+    var snapOffset = options.snapOffset !== undefined ? options.snapOffset : 30;
+    var direction = options.direction || 'horizontal';
+    var cursor = options.cursor || (direction === 'horizontal' ? 'ew-resize' : 'ns-resize');
+    var gutter = options.gutter || (function (i, gutterDirection) {
+        var gut = document.createElement('div');
+        gut.className = "gutter gutter-" + gutterDirection;
+        return gut
+    });
+    var elementStyle = options.elementStyle || (function (dim, size, gutSize) {
+        var style = {};
+
+        if (typeof size !== 'string' && !(size instanceof String)) {
+            if (!isIE8) {
+                style[dim] = calc + "(" + size + "% - " + gutSize + "px)";
+            } else {
+                style[dim] = size + "%";
+            }
+        } else {
+            style[dim] = size;
+        }
+
+        return style
+    });
+    var gutterStyle = options.gutterStyle || (function (dim, gutSize) { return (( obj = {}, obj[dim] = (gutSize + "px"), obj ))
+        var obj; });
+
+    // 2. Initialize a bunch of strings based on the direction we're splitting.
+    // A lot of the behavior in the rest of the library is paramatized down to
+    // rely on CSS strings and classes.
+    if (direction === 'horizontal') {
+        dimension = 'width';
+        clientDimension = 'clientWidth';
+        clientAxis = 'clientX';
+        position = 'left';
+        paddingA = 'paddingLeft';
+        paddingB = 'paddingRight';
+    } else if (direction === 'vertical') {
+        dimension = 'height';
+        clientDimension = 'clientHeight';
+        clientAxis = 'clientY';
+        position = 'top';
+        paddingA = 'paddingTop';
+        paddingB = 'paddingBottom';
+    }
+
+    // 3. Define the dragging helper functions, and a few helpers to go with them.
+    // Each helper is bound to a pair object that contains it's metadata. This
+    // also makes it easy to store references to listeners that that will be
+    // added and removed.
+    //
+    // Even though there are no other functions contained in them, aliasing
+    // this to self saves 50 bytes or so since it's used so frequently.
+    //
+    // The pair object saves metadata like dragging state, position and
+    // event listener references.
+
+    function setElementSize (el, size, gutSize) {
+        // Split.js allows setting sizes via numbers (ideally), or if you must,
+        // by string, like '300px'. This is less than ideal, because it breaks
+        // the fluid layout that `calc(% - px)` provides. You're on your own if you do that,
+        // make sure you calculate the gutter size by hand.
+        var style = elementStyle(dimension, size, gutSize);
+
+        // eslint-disable-next-line no-param-reassign
+        Object.keys(style).forEach(function (prop) { return (el.style[prop] = style[prop]); });
+    }
+
+    function setGutterSize (gutterElement, gutSize) {
+        var style = gutterStyle(dimension, gutSize);
+
+        // eslint-disable-next-line no-param-reassign
+        Object.keys(style).forEach(function (prop) { return (gutterElement.style[prop] = style[prop]); });
+    }
+
+    // Actually adjust the size of elements `a` and `b` to `offset` while dragging.
+    // calc is used to allow calc(percentage + gutterpx) on the whole split instance,
+    // which allows the viewport to be resized without additional logic.
+    // Element a's size is the same as offset. b's size is total size - a size.
+    // Both sizes are calculated from the initial parent percentage,
+    // then the gutter size is subtracted.
+    function adjust (offset) {
+        var a = elements[this.a];
+        var b = elements[this.b];
+        var percentage = a.size + b.size;
+
+        a.size = (offset / this.size) * percentage;
+        b.size = (percentage - ((offset / this.size) * percentage));
+
+        setElementSize(a.element, a.size, this.aGutterSize);
+        setElementSize(b.element, b.size, this.bGutterSize);
+    }
+
+    // drag, where all the magic happens. The logic is really quite simple:
+    //
+    // 1. Ignore if the pair is not dragging.
+    // 2. Get the offset of the event.
+    // 3. Snap offset to min if within snappable range (within min + snapOffset).
+    // 4. Actually adjust each element in the pair to offset.
+    //
+    // ---------------------------------------------------------------------
+    // |    | <- a.minSize               ||              b.minSize -> |    |
+    // |    |  | <- this.snapOffset      ||     this.snapOffset -> |  |    |
+    // |    |  |                         ||                        |  |    |
+    // |    |  |                         ||                        |  |    |
+    // ---------------------------------------------------------------------
+    // | <- this.start                                        this.size -> |
+    function drag (e) {
+        var offset;
+
+        if (!this.dragging) { return }
+
+        // Get the offset of the event from the first side of the
+        // pair `this.start`. Supports touch events, but not multitouch, so only the first
+        // finger `touches[0]` is counted.
+        if ('touches' in e) {
+            offset = e.touches[0][clientAxis] - this.start;
+        } else {
+            offset = e[clientAxis] - this.start;
+        }
+
+        // If within snapOffset of min or max, set offset to min or max.
+        // snapOffset buffers a.minSize and b.minSize, so logic is opposite for both.
+        // Include the appropriate gutter sizes to prevent overflows.
+        if (offset <= elements[this.a].minSize + snapOffset + this.aGutterSize) {
+            offset = elements[this.a].minSize + this.aGutterSize;
+        } else if (offset >= this.size - (elements[this.b].minSize + snapOffset + this.bGutterSize)) {
+            offset = this.size - (elements[this.b].minSize + this.bGutterSize);
+        }
+
+        // Actually adjust the size.
+        adjust.call(this, offset);
+
+        // Call the drag callback continously. Don't do anything too intensive
+        // in this callback.
+        if (options.onDrag) {
+            options.onDrag();
+        }
+    }
+
+    // Cache some important sizes when drag starts, so we don't have to do that
+    // continously:
+    //
+    // `size`: The total size of the pair. First + second + first gutter + second gutter.
+    // `start`: The leading side of the first element.
+    //
+    // ------------------------------------------------
+    // |      aGutterSize -> |||                      |
+    // |                     |||                      |
+    // |                     |||                      |
+    // |                     ||| <- bGutterSize       |
+    // ------------------------------------------------
+    // | <- start                             size -> |
+    function calculateSizes () {
+        // Figure out the parent size minus padding.
+        var a = elements[this.a].element;
+        var b = elements[this.b].element;
+
+        this.size = a[getBoundingClientRect]()[dimension] + b[getBoundingClientRect]()[dimension] + this.aGutterSize + this.bGutterSize;
+        this.start = a[getBoundingClientRect]()[position];
+    }
+
+    // stopDragging is very similar to startDragging in reverse.
+    function stopDragging () {
+        var self = this;
+        var a = elements[self.a].element;
+        var b = elements[self.b].element;
+
+        if (self.dragging && options.onDragEnd) {
+            options.onDragEnd();
+        }
+
+        self.dragging = false;
+
+        // Remove the stored event listeners. This is why we store them.
+        global[removeEventListener]('mouseup', self.stop);
+        global[removeEventListener]('touchend', self.stop);
+        global[removeEventListener]('touchcancel', self.stop);
+
+        self.parent[removeEventListener]('mousemove', self.move);
+        self.parent[removeEventListener]('touchmove', self.move);
+
+        // Delete them once they are removed. I think this makes a difference
+        // in memory usage with a lot of splits on one page. But I don't know for sure.
+        delete self.stop;
+        delete self.move;
+
+        a[removeEventListener]('selectstart', NOOP);
+        a[removeEventListener]('dragstart', NOOP);
+        b[removeEventListener]('selectstart', NOOP);
+        b[removeEventListener]('dragstart', NOOP);
+
+        a.style.userSelect = '';
+        a.style.webkitUserSelect = '';
+        a.style.MozUserSelect = '';
+        a.style.pointerEvents = '';
+
+        b.style.userSelect = '';
+        b.style.webkitUserSelect = '';
+        b.style.MozUserSelect = '';
+        b.style.pointerEvents = '';
+
+        self.gutter.style.cursor = '';
+        self.parent.style.cursor = '';
+    }
+
+    // startDragging calls `calculateSizes` to store the inital size in the pair object.
+    // It also adds event listeners for mouse/touch events,
+    // and prevents selection while dragging so avoid the selecting text.
+    function startDragging (e) {
+        // Alias frequently used variables to save space. 200 bytes.
+        var self = this;
+        var a = elements[self.a].element;
+        var b = elements[self.b].element;
+
+        // Call the onDragStart callback.
+        if (!self.dragging && options.onDragStart) {
+            options.onDragStart();
+        }
+
+        // Don't actually drag the element. We emulate that in the drag function.
+        e.preventDefault();
+
+        // Set the dragging property of the pair object.
+        self.dragging = true;
+
+        // Create two event listeners bound to the same pair object and store
+        // them in the pair object.
+        self.move = drag.bind(self);
+        self.stop = stopDragging.bind(self);
+
+        // All the binding. `window` gets the stop events in case we drag out of the elements.
+        global[addEventListener]('mouseup', self.stop);
+        global[addEventListener]('touchend', self.stop);
+        global[addEventListener]('touchcancel', self.stop);
+
+        self.parent[addEventListener]('mousemove', self.move);
+        self.parent[addEventListener]('touchmove', self.move);
+
+        // Disable selection. Disable!
+        a[addEventListener]('selectstart', NOOP);
+        a[addEventListener]('dragstart', NOOP);
+        b[addEventListener]('selectstart', NOOP);
+        b[addEventListener]('dragstart', NOOP);
+
+        a.style.userSelect = 'none';
+        a.style.webkitUserSelect = 'none';
+        a.style.MozUserSelect = 'none';
+        a.style.pointerEvents = 'none';
+
+        b.style.userSelect = 'none';
+        b.style.webkitUserSelect = 'none';
+        b.style.MozUserSelect = 'none';
+        b.style.pointerEvents = 'none';
+
+        // Set the cursor, both on the gutter and the parent element.
+        // Doing only a, b and gutter causes flickering.
+        self.gutter.style.cursor = cursor;
+        self.parent.style.cursor = cursor;
+
+        // Cache the initial sizes of the pair.
+        calculateSizes.call(self);
+    }
+
+    // 5. Create pair and element objects. Each pair has an index reference to
+    // elements `a` and `b` of the pair (first and second elements).
+    // Loop through the elements while pairing them off. Every pair gets a
+    // `pair` object, a gutter, and isFirst/isLast properties.
+    //
+    // Basic logic:
+    //
+    // - Starting with the second element `i > 0`, create `pair` objects with
+    //   `a = i - 1` and `b = i`
+    // - Set gutter sizes based on the _pair_ being first/last. The first and last
+    //   pair have gutterSize / 2, since they only have one half gutter, and not two.
+    // - Create gutter elements and add event listeners.
+    // - Set the size of the elements, minus the gutter sizes.
+    //
+    // -----------------------------------------------------------------------
+    // |     i=0     |         i=1         |        i=2       |      i=3     |
+    // |             |       isFirst       |                  |     isLast   |
+    // |           pair 0                pair 1             pair 2           |
+    // |             |                     |                  |              |
+    // -----------------------------------------------------------------------
+    var pairs = [];
+    elements = ids.map(function (id, i) {
+        // Create the element object.
+        var element = {
+            element: elementOrSelector(id),
+            size: sizes[i],
+            minSize: minSizes[i],
+        };
+
+        var pair;
+
+        if (i > 0) {
+            // Create the pair object with it's metadata.
+            pair = {
+                a: i - 1,
+                b: i,
+                dragging: false,
+                isFirst: (i === 1),
+                isLast: (i === ids.length - 1),
+                direction: direction,
+                parent: parent,
+            };
+
+            // For first and last pairs, first and last gutter width is half.
+            pair.aGutterSize = gutterSize;
+            pair.bGutterSize = gutterSize;
+
+            if (pair.isFirst) {
+                pair.aGutterSize = gutterSize / 2;
+            }
+
+            if (pair.isLast) {
+                pair.bGutterSize = gutterSize / 2;
+            }
+
+            // if the parent has a reverse flex-direction, switch the pair elements.
+            if (parentFlexDirection === 'row-reverse' || parentFlexDirection === 'column-reverse') {
+                var temp = pair.a;
+                pair.a = pair.b;
+                pair.b = temp;
+            }
+        }
+
+        // Determine the size of the current element. IE8 is supported by
+        // staticly assigning sizes without draggable gutters. Assigns a string
+        // to `size`.
+        //
+        // IE9 and above
+        if (!isIE8) {
+            // Create gutter elements for each pair.
+            if (i > 0) {
+                var gutterElement = gutter(i, direction);
+                setGutterSize(gutterElement, gutterSize);
+
+                gutterElement[addEventListener]('mousedown', startDragging.bind(pair));
+                gutterElement[addEventListener]('touchstart', startDragging.bind(pair));
+
+                parent.insertBefore(gutterElement, element.element);
+
+                pair.gutter = gutterElement;
+            }
+        }
+
+        // Set the element size to our determined size.
+        // Half-size gutters for first and last elements.
+        if (i === 0 || i === ids.length - 1) {
+            setElementSize(element.element, element.size, gutterSize / 2);
+        } else {
+            setElementSize(element.element, element.size, gutterSize);
+        }
+
+        var computedSize = element.element[getBoundingClientRect]()[dimension];
+
+        if (computedSize < element.minSize) {
+            element.minSize = computedSize;
+        }
+
+        // After the first iteration, and we have a pair object, append it to the
+        // list of pairs.
+        if (i > 0) {
+            pairs.push(pair);
+        }
+
+        return element
+    });
+
+    function setSizes (newSizes) {
+        newSizes.forEach(function (newSize, i) {
+            if (i > 0) {
+                var pair = pairs[i - 1];
+                var a = elements[pair.a];
+                var b = elements[pair.b];
+
+                a.size = newSizes[i - 1];
+                b.size = newSize;
+
+                setElementSize(a.element, a.size, pair.aGutterSize);
+                setElementSize(b.element, b.size, pair.bGutterSize);
+            }
+        });
+    }
+
+    function destroy () {
+        pairs.forEach(function (pair) {
+            pair.parent.removeChild(pair.gutter);
+            elements[pair.a].element.style[dimension] = '';
+            elements[pair.b].element.style[dimension] = '';
+        });
+    }
+
+    if (isIE8) {
+        return {
+            setSizes: setSizes,
+            destroy: destroy,
+        }
+    }
+
+    return {
+        setSizes: setSizes,
+        getSizes: function getSizes () {
+            return elements.map(function (element) { return element.size; })
+        },
+        collapse: function collapse (i) {
+            if (i === pairs.length) {
+                var pair = pairs[i - 1];
+
+                calculateSizes.call(pair);
+
+                if (!isIE8) {
+                    adjust.call(pair, pair.size - pair.bGutterSize);
+                }
+            } else {
+                var pair$1 = pairs[i];
+
+                calculateSizes.call(pair$1);
+
+                if (!isIE8) {
+                    adjust.call(pair$1, pair$1.aGutterSize);
+                }
+            }
+        },
+        destroy: destroy,
+    }
+};
+
+return Split;
+
+})));
+
+},{}],378:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -31586,10 +32124,10 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":325,"inherits":334,"readable-stream/duplex.js":350,"readable-stream/passthrough.js":359,"readable-stream/readable.js":360,"readable-stream/transform.js":361,"readable-stream/writable.js":362}],378:[function(require,module,exports){
+},{"events":325,"inherits":334,"readable-stream/duplex.js":350,"readable-stream/passthrough.js":359,"readable-stream/readable.js":360,"readable-stream/transform.js":361,"readable-stream/writable.js":362}],379:[function(require,module,exports){
 module.exports = require('./src/throttle.js');
 
-},{"./src/throttle.js":379}],379:[function(require,module,exports){
+},{"./src/throttle.js":380}],380:[function(require,module,exports){
 var inherits = require('util').inherits;
 var Transform = require('stream').Transform;
 var TokenBucket = require('limiter').TokenBucket;
@@ -31665,7 +32203,7 @@ module.exports = {
     Throttle: Throttle,
     ThrottleGroup: ThrottleGroup
 };
-},{"limiter":337,"stream":377,"util":386}],380:[function(require,module,exports){
+},{"limiter":337,"stream":378,"util":387}],381:[function(require,module,exports){
 'use strict';
 
 var Buffer = require('safe-buffer').Buffer;
@@ -31938,7 +32476,7 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":364}],381:[function(require,module,exports){
+},{"safe-buffer":364}],382:[function(require,module,exports){
 module.exports = throttle;
 
 /**
@@ -31972,7 +32510,7 @@ function throttle (func, wait) {
   }
 }
 
-},{}],382:[function(require,module,exports){
+},{}],383:[function(require,module,exports){
 module.exports = toArray
 
 function toArray(list, index) {
@@ -31987,7 +32525,7 @@ function toArray(list, index) {
     return array
 }
 
-},{}],383:[function(require,module,exports){
+},{}],384:[function(require,module,exports){
 (function (global){
 
 /**
@@ -32058,16 +32596,16 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],384:[function(require,module,exports){
+},{}],385:[function(require,module,exports){
 arguments[4][334][0].apply(exports,arguments)
-},{"dup":334}],385:[function(require,module,exports){
+},{"dup":334}],386:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],386:[function(require,module,exports){
+},{}],387:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -32657,7 +33195,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":385,"_process":348,"inherits":384}],387:[function(require,module,exports){
+},{"./support/isBuffer":386,"_process":348,"inherits":385}],388:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -32751,7 +33289,7 @@ function hasOwnProperty(obj, prop) {
   }
 })();
 
-},{"./chrome/chrome_shim":388,"./edge/edge_shim":390,"./firefox/firefox_shim":392,"./safari/safari_shim":394,"./utils":395}],388:[function(require,module,exports){
+},{"./chrome/chrome_shim":389,"./edge/edge_shim":391,"./firefox/firefox_shim":393,"./safari/safari_shim":395,"./utils":396}],389:[function(require,module,exports){
 
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
@@ -33018,7 +33556,7 @@ module.exports = {
   shimGetUserMedia: require('./getusermedia')
 };
 
-},{"../utils.js":395,"./getusermedia":389}],389:[function(require,module,exports){
+},{"../utils.js":396,"./getusermedia":390}],390:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -33218,7 +33756,7 @@ module.exports = function() {
   }
 };
 
-},{"../utils.js":395}],390:[function(require,module,exports){
+},{"../utils.js":396}],391:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34347,7 +34885,7 @@ module.exports = {
   shimGetUserMedia: require('./getusermedia')
 };
 
-},{"../utils":395,"./getusermedia":391,"sdp":365}],391:[function(require,module,exports){
+},{"../utils":396,"./getusermedia":392,"sdp":365}],392:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34381,7 +34919,7 @@ module.exports = function() {
   };
 };
 
-},{}],392:[function(require,module,exports){
+},{}],393:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34545,7 +35083,7 @@ module.exports = {
   shimGetUserMedia: require('./getusermedia')
 };
 
-},{"../utils":395,"./getusermedia":393}],393:[function(require,module,exports){
+},{"../utils":396,"./getusermedia":394}],394:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34708,7 +35246,7 @@ module.exports = function() {
   };
 };
 
-},{"../utils":395}],394:[function(require,module,exports){
+},{"../utils":396}],395:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34738,7 +35276,7 @@ module.exports = {
   // shimPeerConnection: safariShim.shimPeerConnection
 };
 
-},{}],395:[function(require,module,exports){
+},{}],396:[function(require,module,exports){
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -34871,7 +35409,7 @@ module.exports = {
   extractVersion: utils.extractVersion
 };
 
-},{}],396:[function(require,module,exports){
+},{}],397:[function(require,module,exports){
 /* global Y */
 'use strict'
 
@@ -35228,7 +35766,7 @@ if (typeof Y !== 'undefined') {
   extend(Y)
 }
 
-},{}],397:[function(require,module,exports){
+},{}],398:[function(require,module,exports){
 /* global Y */
 'use strict'
 
@@ -35560,7 +36098,7 @@ if (typeof Y !== 'undefined') {
   extend(Y)
 }
 
-},{}],398:[function(require,module,exports){
+},{}],399:[function(require,module,exports){
 /* global Y */
 'use strict'
 
@@ -35634,7 +36172,7 @@ if (typeof Y !== 'undefined') {
   extend(Y)
 }
 
-},{"./RedBlackTree.js":399}],399:[function(require,module,exports){
+},{"./RedBlackTree.js":400}],400:[function(require,module,exports){
 'use strict'
 
 /*
@@ -36139,7 +36677,7 @@ module.exports = function (Y) {
   Y.utils.RBTree = RBTree
 }
 
-},{}],400:[function(require,module,exports){
+},{}],401:[function(require,module,exports){
 /* global Y */
 'use strict'
 
@@ -36975,7 +37513,7 @@ if (typeof Y !== 'undefined') {
   extend(Y)
 }
 
-},{}],401:[function(require,module,exports){
+},{}],402:[function(require,module,exports){
 /* global Y, Element */
 'use strict'
 
@@ -37516,7 +38054,7 @@ if (typeof Y !== 'undefined') {
   extend(Y)
 }
 
-},{"fast-diff":326}],402:[function(require,module,exports){
+},{"fast-diff":326}],403:[function(require,module,exports){
 'use strict';
 
 var alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_'.split('')
@@ -37586,7 +38124,7 @@ yeast.encode = encode;
 yeast.decode = decode;
 module.exports = yeast;
 
-},{}],403:[function(require,module,exports){
+},{}],404:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -38084,7 +38622,7 @@ module.exports = function (Y/* :any */) {
   Y.AbstractConnector = AbstractConnector
 }
 
-},{}],404:[function(require,module,exports){
+},{}],405:[function(require,module,exports){
 /* global getRandom, async */
 'use strict'
 
@@ -38264,7 +38802,7 @@ module.exports = function (Y) {
   Y.Test = Test
 }
 
-},{}],405:[function(require,module,exports){
+},{}],406:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -38870,7 +39408,7 @@ module.exports = function (Y /* :any */) {
   Y.AbstractDatabase = AbstractDatabase
 }
 
-},{}],406:[function(require,module,exports){
+},{}],407:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -39286,7 +39824,7 @@ module.exports = function (Y/* :any */) {
   Y.Struct = Struct
 }
 
-},{}],407:[function(require,module,exports){
+},{}],408:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -40386,7 +40924,7 @@ module.exports = function (Y/* :any */) {
   Y.Transaction = TransactionInterface
 }
 
-},{}],408:[function(require,module,exports){
+},{}],409:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -41183,7 +41721,7 @@ module.exports = function (Y /* : any*/) {
   Y.utils.generateGuid = generateGuid
 }
 
-},{}],409:[function(require,module,exports){
+},{}],410:[function(require,module,exports){
 /* @flow */
 'use strict'
 
@@ -41422,7 +41960,7 @@ class YConfig {
   }
 }
 
-},{"./Connector.js":403,"./Connectors/Test.js":404,"./Database.js":405,"./Struct.js":406,"./Transaction.js":407,"./Utils.js":408,"debug":310}],410:[function(require,module,exports){
+},{"./Connector.js":404,"./Connectors/Test.js":405,"./Database.js":406,"./Struct.js":407,"./Transaction.js":408,"./Utils.js":409,"debug":310}],411:[function(require,module,exports){
 
 function User () {
     var self = this
@@ -41444,26 +41982,42 @@ User.prototype.setData = function (data) {
 }
 
 module.exports = new User()
-},{}],411:[function(require,module,exports){
+},{}],412:[function(require,module,exports){
 /* globals CodeMirror */
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var FileSystem = require('./../filesystem/filesystem')
 
-inherits(Editor, EventEmitter)
+inherits(CodeEditor, EventEmitter)
 
-function Editor () {
+function CodeEditor (options) {
   var self = this
-  if (!(self instanceof Editor)) return new Editor()
+  if (!(self instanceof CodeEditor)) return new CodeEditor(options)
+  
+  options = options || {}
+  self.title = options.title || 'no name'
+  self.container = options.container || document.createElement("div")
+  self.container.className = 'editor-view'
+  self.bindedTab = null
 
-  var textArea = document.getElementById('editor')
+  var textarea = options.textarea
+  if(!textarea) {
+    textarea = document.createElement("div")
+    textarea.className = "view code-editor"
+    self.container.appendChild(textarea)
+  }
+  self.textarea = textarea
 
-  var options = {
-    mode: {name: 'javascript', globalVars: true},
+  self._cm = CodeMirror(function(elt) {
+      // elt.className += " view code-editor"
+      self.textarea.parentNode.replaceChild(elt, self.textarea);
+      self.textarea = elt
+    }, {
+    mode: {name: 'javascript', globalVars: true}, // syntax mode will change when file opens
     extraKeys: {'tab': 'autocomplete'},
     lineNumbers: true,
-    theme: self._theme || 'atom',
+    theme: options.codemirrortheme || 'atom',
     tabSize: 4,
     indentUnit: 4,
     lineWrapping: !!(window.innerWidth < 480), // No wrap on mobile
@@ -41471,55 +42025,78 @@ function Editor () {
     matchBrackets: true,
     autoCloseBrackets: true,
     matchTags: {bothTags: true},
-    autoCloseTags: true
-  }
+    autoCloseTags: true,
+    autoResize: true
+  })
 
-  self._cm = CodeMirror.fromTextArea(textArea, options)
-
-  self._cm.on('keyup', function (editor, event) {
+  self._keyup = function (editor, event) {
     if (!ExcludedIntelliSenseTriggerKeys[(event.keyCode || event.which).toString()]) {
       CodeMirror.commands.autocomplete(editor, null, { completeSingle: false })
     }
-  })
+  }
+  self._cm.on('keyup', self._keyup)
 
   self._workingFile = null
-  self._mutex = false
 
-  self._cm.on('change', self._onchange.bind(self))
-  self._cm.on('beforeSelectionChange', self._onSelectionChange.bind(self))
+  var tokens = {}
+  self.mutualExcluse = function (key, f) { if (!tokens[key]) { tokens[key] = true; try { f(); } catch (e) { delete tokens[key]; throw new Error(e); } delete tokens[key]; } }
 
-  self._theme = null
+  self._onchangebind = self._onchange.bind(self)
+  self._onSelectionChangebind = self._onSelectionChange.bind(self)
+  self._cm.on('change', self._onchangebind)
+  self._cm.on('beforeSelectionChange', self._onSelectionChangebind)
+
   self._remoteCarets = []
   self._lastSelections = []
+  self._remote = null
+
+  self._resizetimeout = function () { 
+    if(self.container.offsetHeight && self._cm.getWrapperElement().offsetHeight != (self.container.offsetHeight - 43 + 1)) {
+      self._cm.getWrapperElement().style.height = (self.container.offsetHeight - 43) + 'px'
+      // self._cm.setSize(self.container.offsetWidth, self.container.offsetHeight - 43)
+      // self._cm.refresh()
+      console.log('size '+self.container.offsetHeight)
+    } 
+  }
+  setInterval(self._resizetimeout, 500);
 }
 
-Editor.prototype._onchange = function (cm, change) {
+CodeEditor.prototype._onchange = function (cm, change) {
   var self = this
+  self.mutualExcluse('change', function() {
+    change.start = self._cm.indexFromPos(change.from)
+    // self.emit('change', {
+    //   filePath: self._workingFile.path,
+    //   change: change
+    // })
+    self._remote.changeFile(self._workingFile.path, change)
+  })  
   
-  if (self._mutex) return
-  
-  change.start = self._cm.indexFromPos(change.from)
-  self.emit('change', {
-    filePath: self._workingFile.path,
-    change: change
-  })
 }
 
-Editor.prototype._onSelectionChange = function (cm, change) {
+CodeEditor.prototype._onSelectionChange = function (cm, change) {
   var self = this
   
   var ranges = change.ranges.map(self._putHeadBeforeAnchor)
   
-  self.emit('selection', {
+  // self.emit('selection', {
+  //   filePath: self._workingFile.path,
+  //   change: {
+  //     type: 'selection',
+  //     ranges: ranges
+  //   }
+  // })
+  self._remote.changeSelection({
     filePath: self._workingFile.path,
     change: {
       type: 'selection',
       ranges: ranges
     }
   })
+
 }
 
-Editor.prototype.highlight = function (selections) {
+CodeEditor.prototype.highlight = function (selections) {
   var self = this
   
   self._lastSelections = selections
@@ -41551,7 +42128,7 @@ Editor.prototype.highlight = function (selections) {
   }, 10)
 }
 
-Editor.prototype._insertRemoteCaret = function (range) {
+CodeEditor.prototype._insertRemoteCaret = function (range) {
   var self = this
 
   var caretEl = document.createElement('div')
@@ -41565,69 +42142,83 @@ Editor.prototype._insertRemoteCaret = function (range) {
   self._cm.addWidget(range.anchor, caretEl, false)
 }
 
-Editor.prototype._removeRemoteCaret = function (caret) {
+CodeEditor.prototype._removeRemoteCaret = function (caret) {
   var self = this
   caret.parentNode.removeChild(caret)
 }
 
 // Handle an external change
-Editor.prototype.change = function (filePath, change) {
+CodeEditor.prototype.change = function (filePath, change) {
   var self = this
-  
-  if (!self._workingFile || filePath !== self._workingFile.path) {
-    FileSystem.getFile(filePath).doc.replaceRange(change.text, change.to, change.from)
-  } else {
-    self._mutex = true
-    self._cm.replaceRange(change.text, change.to, change.from)
-    self._mutex = false
+  if (self._workingFile && filePath === self._workingFile.path) {
+    self.mutualExcluse('change',function() {
+      self._cm.replaceRange(change.text, change.to, change.from)      
+    })
   }
 }
 
-Editor.prototype.posFromIndex = function (index) {
+CodeEditor.prototype.posFromIndex = function (index) {
   var self = this
   
   return self._cm.posFromIndex(index)
 }
 
-Editor.prototype.open = function (filePath) {
+CodeEditor.prototype.open = function (filePath, remote) {
   var self = this
-  if (self._workingFile && filePath === self._workingFile.path) return
+  if (self._workingFile && filePath === self._workingFile.path) return // Skip, if the file is already opened
   self._workingFile = FileSystem.get(filePath)
-  document.getElementById('working-file').innerHTML = self._workingFile.name
-  switch (self._workingFile.viewMapping) {
-    case 'image':
-      document.querySelector('.editor-wrapper').style.display = 'none'
-      document.querySelector('.image-wrapper').style.display = ''
-      document.querySelector('.image-wrapper > img').src = 'data:text/javascript;base64,' + self._workingFile.doc
-      break
-    default:
-      document.querySelector('.editor-wrapper').style.display = ''
-      document.querySelector('.image-wrapper').style.display = 'none'
-      self._cm.swapDoc(self._workingFile.doc)
-      break
-  }
-  
+  self._remote = remote
+  // self.bindedTab.rename(self._workingFile.name)
+
+  // document.querySelector('.editor-wrapper').style.display = ''
+  self._cm.swapDoc(self._workingFile.cmdoc)
   self.highlight(self._lastSelections)
+  setTimeout(function() {
+    self._cm.execCommand('goDocStart')
+  },100)
+
+  self._selectionevent = function (selections) {
+    // sync text cursor of other user.
+    // 협업 중인 다른 사용자의 커서가 현재 사용자의 문서 에디터에 나타나도록 한다.
+    self.highlight(selections)
+  }
+  self._remote.on('changeSelection', self._selectionevent)
+  self._changetextevent = function (data) {
+    // sync text of other user on Editor.
+    // 협업 중인 다른 사용자가 작업한 내용을 현재 사용자의 문서 에디터에 반영한다.
+    self.change(data.filePath, data.change)
+  }
+  self._remote.on('changeFile', self._changetextevent)
 }
 
-Editor.prototype.close = function () {
+CodeEditor.prototype.close = function () {
   var self = this
   self._workingFile = null
-  document.getElementById('working-file').innerHTML = ''
-  document.querySelector('.editor-wrapper').style.display = 'none'
-  document.querySelector('.editor-wrapper').style.display = 'none'
+
+  self._cm.off('keyup', self._keyup)
+  self._cm.off('change', self._onchangebind)
+  self._cm.off('beforeSelectionChange', self._onSelectionChangebind)
+  self._cm.swapDoc(new CodeMirror.Doc(''))
+
+  self._remote.removeListener('changeSelection', self._selectionevent)
+  self._remote.removeListener('changeFile', self._changetextevent)
+  
+  self.container.childNodes.forEach(function(element) {
+    self.container.removeChild(element)
+  })
+    //TODO: destroy
 }
 
-Editor.prototype.getWorkingFile = function () {
+CodeEditor.prototype.getWorkingFile = function () {
   var self = this
   return self._workingFile
 }
 
-Editor.prototype._isNonEmptyRange = function (range) {
+CodeEditor.prototype._isNonEmptyRange = function (range) {
   return range.head.ch !== range.anchor.ch || range.head.line !== range.anchor.line
 }
 
-Editor.prototype._putHeadBeforeAnchor = function (range) {
+CodeEditor.prototype._putHeadBeforeAnchor = function (range) {
   var nr = JSON.parse(JSON.stringify(range))
   if (nr.head.line > nr.anchor.line || (
     nr.head.line === nr.anchor.line && nr.head.ch > nr.anchor.ch
@@ -41638,8 +42229,11 @@ Editor.prototype._putHeadBeforeAnchor = function (range) {
   }
   return nr
 }
-
-module.exports = new Editor()
+CodeEditor.prototype.bindTab = function (tab) {
+  var self = this
+  self.bindedTab = tab
+}
+module.exports = CodeEditor
 
 var ExcludedIntelliSenseTriggerKeys = {
   '8': 'backspace',
@@ -41693,13 +42287,138 @@ var ExcludedIntelliSenseTriggerKeys = {
   '220': 'backslash',
   '222': 'quote'
 }
-},{"./../filesystem/filesystem":415,"events":325,"inherits":334}],412:[function(require,module,exports){
-/* global Y, CodeMirror */
+},{"./../filesystem/filesystem":418,"events":325,"inherits":334}],413:[function(require,module,exports){
+/* globals Quill */
+
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var FileSystem = require('./../filesystem/filesystem')
-var Editor = require('./editor')
-var Util = require('./../filesystem/util')
+
+inherits(DocEditor, EventEmitter)
+
+function DocEditor(options) {
+    var self = this
+    if (!(self instanceof DocEditor)) return new DocEditor(options)
+
+  options = options || {}
+  self.title = options.title || 'no name'
+  self.container = options.container || document.createElement("div")
+  self.container.className = 'editor-view'
+  self.bindedTab = null
+
+    var textarea = options.textarea
+    if (!textarea) {
+        textarea = document.createElement("div")
+        textarea.className = "view doc-editor"
+        self.container.appendChild(textarea)
+    }
+    self.textarea = textarea
+    self._quill = new Quill(self.textarea, {
+        modules: {
+            toolbar: [
+                [{header: [1, 2, false]}],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{'list': 'ordered'}, {'list': 'bullet'}],
+                ['link', 'image', 'video', 'formula', 'code-block'],
+                ['clean']
+            ]
+        },
+        placeholder: 'Compose an epic...',
+        theme: 'snow'
+    })
+    self.content = null
+    self.remoteBinder = null
+    self._remote = null
+    self._workingFile = null
+}
+
+DocEditor.prototype.open = function (filePath, remote) {
+    var self = this
+    if(self.remoteBinder) {
+        throw Error('y-richtext already binded!')
+    }
+    self._remote = remote
+    self.remoteBinder = self._remote.yfs.get(filePath)
+    self.remoteBinder.bindQuill(self._quill)
+    self._workingFile = FileSystem.get(filePath)
+}
+DocEditor.prototype.close = function () {
+    var self = this
+    self.remoteBinder.unbindQuill(self._quill)
+    self.remoteBinder = null
+    self._workingFile = null
+    //TODO: destroy
+    self._quill.disable()
+    delete self._quill
+}
+
+DocEditor.prototype.getWorkingFile = function () {
+  var self = this
+  return self._workingFile || {}
+}
+DocEditor.prototype.bindTab = function (tab) {
+  var self = this
+  self.bindedTab = tab
+}
+module.exports = DocEditor
+},{"./../filesystem/filesystem":418,"events":325,"inherits":334}],414:[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+var FileSystem = require('./../filesystem/filesystem')
+
+inherits(HtmlEditor, EventEmitter)
+
+function HtmlEditor(options) {
+    var self = this
+    if (!(self instanceof HtmlEditor)) return new HtmlEditor(options)
+
+  options = options || {}
+  self.title = options.title || 'no name'
+  self.container = options.container || document.createElement("div")
+  self.container.className = 'editor-view'
+  self.bindedTab = null
+
+    var dom = options.textarea
+    if (!dom) {
+        dom = document.createElement("div")
+        dom.className = "view html-viewer"
+        self.container.appendChild(dom)
+    }
+    self.dom = dom
+    self.dom.innerHTML = options.content || ''
+
+    self._remote = null
+    self._workingFile = null
+}
+
+HtmlEditor.prototype.open = function (filePath, remote) {
+    var self = this
+    if(!self._remote) {
+        throw Error('already binded!')
+    }
+    self._remote = remote
+    self.dom.innerHTML = self._remote.yfs.get(filePath)
+    self._workingFile = FileSystem.get(filePath)
+}
+HtmlEditor.prototype.close = function () {
+    var self = this
+    self.dom.innerHTML = ''
+    self._remote = null
+}
+HtmlEditor.prototype.getWorkingFile = function () {
+  var self = this
+  return self._workingFile || {}
+}
+HtmlEditor.prototype.bindTab = function (tab) {
+  var self = this
+  self.bindedTab = tab
+}
+module.exports = HtmlEditor
+},{"./../filesystem/filesystem":418,"events":325,"inherits":334}],415:[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+// var FileSystem = require('./../filesystem/filesystem')
+// var Util = require('./../filesystem/util')
 var User = require('./../auth/user')
 
 inherits(Reply, EventEmitter)
@@ -41821,14 +42540,14 @@ Reply.prototype.addReplyInput = function (line, level, order) {
     '<img src="' + User.user_picture + '" width="32px"></div>' +
     '<div class="reply-text-container" style="margin:0;padding-top:5px; vertical-align: top; display:inline-block;line-height:1.4;width: calc(100% - 60px);min-height:37px;">' +
     '<div class="reply-input-box" style="border:1px solid #aaa; background:#ffffff;">' +
-    '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" tabindex="-1">' +
-    '<span style="color:#888;">답글 달기...</span></div></div></div></div>'
+    '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" data-placeholder="답글 달기 ..." tabindex="-1">' +
+    '</div></div></div></div>'
     // 미리 작성한 html 템플레이트를 사용한다. https://thimbleprojects.org/mohawkduck/194618/
 
   function oarc () {
     var clickdom = document.getElementById('reply-input-' + reply_id)
     clickdom.addEventListener('keydown', self.onAddReply.bind(self, window.event, reply_id))
-    clickdom.addEventListener('focus', self.replyinputfocus.bind(window.event))
+    // clickdom.addEventListener('focus', self.replyinputfocus.bind(window.event))
     clickdom.focus()
   }
   self.timeouts.push(setTimeout(oarc, 100))
@@ -41850,16 +42569,16 @@ Reply.prototype.addReplyInput = function (line, level, order) {
   })
 }
 
-Reply.prototype.replyinputfocus = function (e) {
-  var self = this
-  // 댓글입력노드에 텍스트 커서가 붙으면 호출된다.
-  if (e.target.textContent != '답글 달기...') return
-  // 안내문구가 있을 경우 안내문구를 삭제한다.
-  e.target.innerHTML = ''
-  while (e.target.firstChild) {
-    e.target.removeChild(e.target.firstChild)
-  }
-}
+// Reply.prototype.replyinputfocus = function (e) {
+//   var self = this
+//   // 댓글입력노드에 텍스트 커서가 붙으면 호출된다.
+//   if (e.target.textContent != '답글 달기...') return
+//   // 안내문구가 있을 경우 안내문구를 삭제한다.
+//   e.target.innerHTML = ''
+//   while (e.target.firstChild) {
+//     e.target.removeChild(e.target.firstChild)
+//   }
+// }
 
 Reply.prototype.onAddReply = function (event, reply_id) {
   var self = this
@@ -41944,7 +42663,7 @@ console.log('widget is: ' + widget);
   console.log('reply inserted at line: ' + replyobj.line_num + ' order: ' + replyobj.order + ' of total: ' + rcount)
 
   if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
-    function oarcd () {
+    var oarcd = function () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
       clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
     }
@@ -42041,7 +42760,13 @@ Reply.prototype.removeReply = function (robj, dontsync) {
 
 Reply.prototype.setReplyPanel = function (cm) {
   var self = this
-  if (self.replyPanel) self.replyPanel.clear()
+  if (self.replyPanel) {
+    try {
+      self.replyPanel.clear()
+    } catch (error) {
+      // TODO: 오류 처리 코드를 넣는다.
+    }
+  }
   // 에디터에 댓글 다는 패널을 만든다.
   var PANEL_ELEMENT_CLASS = 'CM-buttonsPanel'
   var panelNode = document.createElement('div')
@@ -42096,7 +42821,7 @@ Reply.prototype.genId = function () {
 
 module.exports = new Reply()
 
-},{"./../auth/user":410,"./../filesystem/filesystem":415,"./../filesystem/util":416,"./editor":411,"events":325,"inherits":334}],413:[function(require,module,exports){
+},{"./../auth/user":411,"events":325,"inherits":334}],416:[function(require,module,exports){
 var util = require('./util')
 
 function Directory (path) {
@@ -42107,11 +42832,13 @@ function Directory (path) {
   self.path = path
   self.nodes = []
   self.isDir = true
+  self.type = 'directory'
 }
 
 module.exports = Directory
 
-},{"./util":416}],414:[function(require,module,exports){
+},{"./util":419}],417:[function(require,module,exports){
+/* global CodeMirror, Quill */
 var util = require('./util')
 
 function File (path) {
@@ -42121,40 +42848,93 @@ function File (path) {
   self.name = util.getFilename(path)
   self.path = path
   self.isDir = false
-  self.viewMapping = util.getViewMapping(path)
-  self.alreadyLink = false
-  
-  self.doc = new CodeMirror.Doc('', util.pathToMode(path))
+  self.type = util.findFileType(path)
+
+  self._content = null
+  self.cmdoc = null
+  self.quilldelta = null
+  if(self.type === 'text') self.cmdoc = new CodeMirror.Doc('', util.pathToCodeMode(path))
   
   Object.defineProperty(self, 'content', {
     get: function () {
-      return self.doc.getValue()
+      switch (self.type) {
+        case 'image': return self._content
+        case 'text': return self.cmdoc.getValue()
+        case 'quilljs': 
+          var tempCont = document.createElement("div");
+          (new Quill(tempCont)).setContents(self.quilldelta)
+          return tempCont.getElementsByClassName("ql-editor")[0].innerHTML
+        default: return self._content
+      }
+    },
+    set: function (value) {
+      switch (self.type) {
+        case 'image':
+          self._content = value
+          break;
+        case 'text':
+          self.cmdoc.setValue(value)
+          break;
+        case 'quilljs':
+          self.quilldelta = value
+          break;
+        default:
+          self._content = value
+          break;
+      }
     }
   })
   
   Object.defineProperty(self, 'size', {
     get: function () {
-      return self.doc.getValue().length
+      switch (self.type) {
+        case 'image': return self._content.length
+        case 'text': return self.cmdoc.getValue().length
+        case 'quilljs': return self.content.length
+        default: return self._content.length
+      }
     }
   })
 }
 
-File.prototype.write = function (content, cb) {
-  var self = this
+// File.prototype.write = function (value, cb) {
+//   var self = this
+//   switch (self.type) {
+//     case 'image':
+//       self.content = value
+//       break;
+//     case 'text':
+//       self.cmdoc.setValue(value)
+//       break;
+//     case 'quilljs':
+//       break;
+//     default:
+//       self.content = value
+//       break;
+//   }
+//   if (cb) cb()
+// }
 
-  self.doc.setValue(content)
-  if (cb) cb()
-}
-
-File.prototype.read = function (cb) {
-  var self = this
-
-  if (cb) cb(self.doc.getValue())
-}
+// File.prototype.read = function (cb) {
+//   var self = this
+//   var cont = self.content
+//   switch (self.type) {
+//     case 'image':
+//       break;
+//     case 'text':
+//       cont = self.cmdoc.getValue()
+//       break;
+//     case 'quilljs':
+//       break;
+//     default:
+//       break;
+//   }
+//       if (cb) cb(cont)
+// }
 
 module.exports = File
 
-},{"./util":416}],415:[function(require,module,exports){
+},{"./util":419}],418:[function(require,module,exports){
 /* globals JSZip, Blob, CodeMirror */
 
 var File = require('./file')
@@ -42400,7 +43180,7 @@ FileSystem.prototype.unzip = function (file, cb) {
       } else {
         self.mkfile(relativePath)
         zipEntry.async('string').then(function (content) {
-          self.get(relativePath).doc = new CodeMirror.Doc(content, util.pathToMode(relativePath))
+          self.get(relativePath).cmdoc = new CodeMirror.Doc(content, util.pathToCodeMode(relativePath))
           self.emit('unzipFile', self.get(relativePath))
           if (--awaiting <= 0) cb()
         })
@@ -42411,7 +43191,7 @@ FileSystem.prototype.unzip = function (file, cb) {
 
 module.exports = new FileSystem()
 
-},{"./directory":413,"./file":414,"./util":416,"events":325,"inherits":334}],416:[function(require,module,exports){
+},{"./directory":416,"./file":417,"./util":419,"events":325,"inherits":334}],419:[function(require,module,exports){
 var util = {}
 
 util.getFilename = function (path) {
@@ -42435,11 +43215,13 @@ var CM_MAPPINGS = {
   'less': 'css',
   'html': 'htmlmixed',
   'xml': 'xml',
-  'php': 'application/x-httpd-php'
+  'py': 'python',
+  'php': 'application/x-httpd-php',
+  'md': 'markdown'
 }
-util.pathToMode = function (path) {
+util.pathToCodeMode = function (path) {
   return {
-    name: CM_MAPPINGS[util.getExtension(path)],
+    name: CM_MAPPINGS[util.getExtension(path)] || null,
     globalVars: true
   }
 }
@@ -42456,7 +43238,21 @@ var VIEW_MAPPINGS = {
   'ico': 'image'
 }
 util.getViewMapping = function (path) {
-  return VIEW_MAPPINGS[util.getExtension(path)] || 'text'
+  return VIEW_MAPPINGS[util.getExtension(path)] || null
+}
+
+var PATH_MAPPINGS = {
+  'quill': 'quilljs',
+  'replydb': 'replydb'
+}
+util.pathCheck = function (path) {
+  return PATH_MAPPINGS[util.getExtension(path)] || null
+}
+util.findFileType = function (path) {
+  return (util.pathCheck(path) 
+  || (!!util.pathToCodeMode(path).name?'text':null) 
+  || util.getViewMapping(path) 
+  || 'unknown')
 }
 
 // Creates a zip archive from a file tree
@@ -42485,13 +43281,18 @@ util.getParameterByName = function (name) {
 
 module.exports = util
 
-},{}],417:[function(require,module,exports){
+},{}],420:[function(require,module,exports){
 // y-js browser debug state
-localStorage.debug = 'y:*,MH:*'
+
+// localStorage.debug = 'y:*,MH:*'
+// Turn on debug log
+var debug = require('debug')('MH:index')
 
 var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
-var Editor = require('./editor/editor')
+var CodeEditor = require('./editor/codeeditor')
+var DocEditor = require('./editor/doceditor')
+var HtmlEditor = require('./editor/htmlviewer')
 var Remote = require('./network/multihack-core')
 var HyperHostWrapper = require('./network/hyperhostwrapper')
 var util = require('./filesystem/util')
@@ -42510,17 +43311,53 @@ function Multihack (config) {
   config = config || {}
   // config: { hostname }
 
+  var _openView = function (e) {
+    var view = Interface.workspacePane.isOnPane(e.path)
+    if(view) {
+      Interface.workspacePane.changeView(view)
+      return
+    }
+
+    debug('open view with type: '+ util.findFileType(e.path))
+
+    if(util.findFileType(e.path) === 'text') {
+      view = new CodeEditor()
+      view.open(e.path,self._remote)
+      self._remote.onObserver(e.path + '.replydb')
+      self._remote.onObserver(e.path)
+      // setting an observer for document sync.
+      // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
+      Reply.setReplies(e.path + '.replydb', view._cm, self._remote.getReplyContent(e.path + '.replydb'))
+      // Load and set reply data after file opens.
+      // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
+    } else if(util.findFileType(e.path) === 'quilljs') {
+      view = new DocEditor()
+      view.open(e.path,self._remote)
+    } else if(util.findFileType(e.path) === 'image') {
+      // view = new HtmlEditor()
+      // view.open(e.path,self._remote)
+      // TODO: image viewer 만든다.
+      return
+    } else {
+      return
+    }
+    
+    Interface.workspacePane.addView(util.getFilename(e.path),view)
+  }
+  Interface.workspacePane.on('viewChange', function(e){
+    if(e.view.getWorkingFile().type === 'text') {
+      var filepath = e.view.getWorkingFile().path
+      Reply.setReplies(filepath + '.replydb', e.view._cm, self._remote.getReplyContent(filepath + '.replydb'))      
+    }
+  })
+
   Interface.on('openFile', function (e) {
     // call when gui opens file.
     // gui에서 파일을 열때 호출한다.
-    if (Editor._workingFile) {
-      if (Editor._workingFile.path === e.path) return
-      // ignores already opend file.
-      // 이미 열려있는 파일을 다시 클릭하면 무시한다.
-      console.log('switching file: ' + Editor._workingFile.path);
-    }
-    console.log('interface open file: ' + e.path);
-    FileSystem.getFile(e.path).doc.setValue(self._remote.getContent(e.path))
+    debug('interface try to open file: ' + e.path);
+    FileSystem.getFile(e.path).content = self._remote.getContent(e.path)
+    // observe하지 않는 동안 업데이트 된 내용을 File obj와 동기화한다.
+
     // FileSystem is an virtual file system made with object(File, Folder) and array.
     // doc is document model in CodeMirror. It states contents and options.
     // self._remote is multihack-core. And it's controls network and realtime document sync(CRDT).
@@ -42530,16 +43367,7 @@ function Multihack (config) {
     // self._remote (multihack-core)는 네트워크 및 CRDT 문서 동기화를 하는 모듈이다.
     // 문서 동기화 모델(yjs의 y-text)에서 해당 문서의 내용을 가져와서 파일시스템의 파일에 넣는다.
 
-    Editor.open(e.path)
-    // Open a file on Editor. It brings file from FileSystem.
-    // 에디터에서 파일을 연다. Editor 오브젝트 안에서는 FileSystem을 호출해서 파일 내용을 가져와서 연다.
-    self._remote.setObserver(e.path + '.replydb','reply')
-    self._remote.setObserver(e.path,'text')
-    // setting an observer for document sync.
-    // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
-    Reply.setReplies(e.path + '.replydb', Editor._cm, self._remote.getReplyContent(e.path + '.replydb'))
-    // Load and set reply data after file opens.
-    // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
+    _openView(e)
   })
 
   Interface.on('addFile', function (e) {
@@ -42550,25 +43378,10 @@ function Multihack (config) {
     // 같은 이름의 파일이 이미 있을 때는 무시한다.
     if (created) {
       Interface.treeview.addFile(e.parentElement, FileSystem.get(e.path))
-      // DOM의 인터페이스에 파일을 추가한다.
-      Editor.open(e.path)
       self._remote.createFile(e.path)
-      // create y-text data. it also creates replydb data.
-      // 새 문서의 y-text를 만든다. createFile을 하면 replydb를 함께 만든다.
-      self._remote.setObserver(e.path + '.replydb','reply')
-      self._remote.setObserver(e.path,'text')
-      Reply.setReplies(e.path + '.replydb', Editor._cm, self._remote.getReplyContent(e.path + '.replydb'))
+      // DOM의 인터페이스에 파일을 추가한다.
+      _openView(e)
     }
-  })
-
-  FileSystem.on('unzipFile', function (file) {
-    // call when user upload zip file project.
-    // 프로젝트 파일을 zip 형식으로 업로드 하는 경우 호출한다.
-    file.read(function (content) {
-      self._remote.createFile(file.path, content)
-      // 각각의 파일마다 y-text를 만든다.
-      // FIXME: image, binary 등 내용 동기화를 할 필요없는 파일은 y-text를 만들 필요가 없다.
-    })
   })
 
   Interface.on('addDir', function (e) {
@@ -42585,7 +43398,6 @@ function Multihack (config) {
     // call when gui delete directory
     // 폴더 삭제 버튼을 클릭하면 호출한다.
     var dir = FileSystem.get(e.path)
-    var workingFile = Editor.getWorkingFile()
 
     Interface.confirmDelete(dir.name, function () {
       // confirm deleting directory
@@ -42594,23 +43406,21 @@ function Multihack (config) {
       // 인터페이스에서 폴더이름을 지운다.
       FileSystem.getContained(e.path).forEach(function (file) {
         // 폴더 안에 파일이 있으면 먼저 다 지운다.
-        if (workingFile && file.path === workingFile.path) {
-          Editor.close()
-        }
+        var view = Interface.workspacePane.isOnPane(file.path)
+        if(view) Interface.workspacePane.closeView(view)
         self._remote.deleteFile(file.path)
       })
       self._remote.deleteFile(e.path)
     })
   })
 
-  Interface.on('deleteCurrent', function (e) {
-    // call when delete file that currently opened on Editor.
-    // 열려있는 파일 하단에 휴지통 버튼을 클릭하면 호출한다.
-    // TODO: 열려있지 않은 파일을 지우는 인터페이스, 기능을 추가한다.
-    var workingFile = Editor.getWorkingFile()
-    if (!workingFile) return
-    Editor.close()
+  Interface.on('deleteFile', function (e) {
+    // 파일을 삭제한다. Pane에 열려있으면 닫는다.
+    if (!e.path) return
+    var view = Interface.workspacePane.isOnPane(e.path)
+    if(view) Interface.workspacePane.closeView(view)
 
+    var workingFile = FileSystem.getFile(e.path)
     Interface.confirmDelete(workingFile.name, function () {
       var workingPath = workingFile.path
       var parentElement = Interface.treeview.getParentElement(workingPath)
@@ -42629,11 +43439,19 @@ function Multihack (config) {
   // 프로젝트 (룸)이름을 설정한다.
   self.hostname = config.hostname
 
+  FileSystem.on('unzipFile', function (file) {
+    // call when user upload zip file project.
+    // 프로젝트 파일을 zip 형식으로 업로드 하는 경우 호출한다.
+    self._remote.createFile(file.path, file.content)
+      // 각각의 파일마다 y-text를 만든다.
+      // FIXME: image, binary 등 내용 동기화를 할 필요없는 파일은 y-text를 만들 필요가 없다.
+  })
+
   Interface.on('saveAs', function (saveType) {
     // exports project as Zip file
     // 인터페이스에서 zip으로 내보내기를 클릭하면 호출한다.
     FileSystem.getContained('').forEach(function (file) {
-      file.write(self._remote.getContent(file.path))
+      file.content = self._remote.getContent(file.path)
       // 각각의 파일에 y-text 컨텐츠를 삽입한다.
     })
     FileSystem.saveProject(saveType, function (success) {
@@ -42662,6 +43480,10 @@ function Multihack (config) {
     HyperHostWrapper.deploy(FileSystem.getTree())
   })
 
+  Reply.on('changeReply', function (e) {
+    self._remote.changeReply(e.filePath, e.optype, e.opval)
+  })
+
 // Originaly on Multihack, it show modal to write room id and user name, but we doesn't need it so I hide it.
 // 앱을 시작했을 때 모달창이 떠서 룸 id, user id 등을 고르는 부분이 있었는데 필요없어서 숨겼다.
   Interface.hideOverlay()
@@ -42680,7 +43502,7 @@ function Multihack (config) {
       // })
       // also hide zip project file load funciton.
       // 앱을 시작할 때 프로젝트 ZIP 파일을 로드하는 기능을 껐다.
-      Interface.treeview.rerender(tree)
+      Interface.treeview.rerender(FileSystem.getTree())
     })
   }
 }
@@ -42712,19 +43534,20 @@ Multihack.prototype._initRemote = function (cb) {
     self._remote.posFromIndex = function (filePath, index, cb) {
       // tracking user's text cursor. cb is callback function.
       // 사용자가 현재 편집중인 문서 상의 커서 위치를 추적한다. cb는 callback이다. cb에 등록한 함수에 에디터 커서 위치를 인자로 보낸다.
-      cb(FileSystem.getFile(filePath).doc.posFromIndex(index))
+      cb(FileSystem.getFile(filePath).cmdoc.posFromIndex(index))
     }
 
     self._remote.replyUpdate = function (filePath, replies, cb) {
       // tracking pos of reply. Cause it changes when linebreaks.
       // 현재 문서 상의 댓글 위치를 추적한다. 문서의 줄바꿈 상태가 수정되었을 때 댓글의 위치를 조정하려고 만들었다. cb는 callback이다.
-      cb(Reply.getLineChange(Editor._cm, replies))
+      cb(Reply.getLineChange(Reply.cm, replies))
     }
 
-    document.getElementById('voice').style.display = ''
+    document.getElementById('voice').style.display = 'none'
     // 음성채팅 버튼을 보이게 한다.
-    document.getElementById('network').style.display = ''
+    document.getElementById('network').style.display = 'none'
     // 접속한 사용자 보기 버튼을 보이게 한다.
+    document.getElementById('save').style.display = 'none'    
 
     // 음성 채팅 기능을 사용한다.
     Interface.on('voiceToggle', function () {
@@ -42734,25 +43557,12 @@ Multihack.prototype._initRemote = function (cb) {
       Interface.showNetwork(self._remote.peers, self.roomID, self._remote.nop2p, self._remote.mustForward)
     })
 
-    self._remote.on('changeSelection', function (selections) {
-      // sync text cursor of other user.
-      // 협업 중인 다른 사용자의 커서가 현재 사용자의 문서 에디터에 나타나도록 한다.
-      Editor.highlight(selections)
-    })
-    self._remote.on('changeFile', function (data) {
-      // sync text of other user on Editor.
-      // 협업 중인 다른 사용자가 작업한 내용을 현재 사용자의 문서 에디터에 반영한다.
-      Editor.change(data.filePath, data.change)
-    })
     self._remote.on('deleteFile', function (data) {
       // sync deletion of file.
       // 협업 중인 다른 사용자가 파일을 지운 경우 동기화 한다.
       var parentElement = Interface.treeview.getParentElement(data.filePath)
-      var workingFile = Editor.getWorkingFile()
-
-      if (workingFile && data.filePath === workingFile.path) {
-        Editor.close()
-      }
+      var view = Interface.workspacePane.isOnPane(data.filePath)
+      if(view) Interface.workspacePane.closeView(view)
 
       if (parentElement) {
         Interface.treeview.remove(parentElement, FileSystem.get(data.filePath))
@@ -42762,17 +43572,8 @@ Multihack.prototype._initRemote = function (cb) {
     self._remote.on('createFile', function (data) {
       // sync creation of file
       // 협업 중인 다른 사용자가 파일을 생성한 경우 동기화 한다.
-      FileSystem.getFile(data.filePath).write(data.content)
+      FileSystem.getFile(data.filePath).content = data.content
       Interface.treeview.rerender(FileSystem.getTree())
-
-      // 현재 사용자가 아무 파일을 열지 않은 상태일 때 협업 중인 사용자가 파일을 생성하면 자동으로 그 파일을 연다. 일시적인 오류가 있어 숨겼다.
-      // if (!Editor.getWorkingFile()) {
-      //   self._remote.setObserver(data.filePath + '.replydb','reply')
-      //   self._remote.setObserver(data.filePath,'text')
-      //   Editor.open(data.filePath)
-      //   FileSystem.getFile(data.filePath).doc.setValue(self._remote.getContent(data.filePath))
-      //   Reply.setReplies(data.filePath + '.replydb', Editor._cm, self._remote.getReplyContent(data.filePath + '.replydb'))
-      // }
     })
     self._remote.on('createDir', function (data) {
       // sync creation of directory.
@@ -42794,8 +43595,7 @@ Multihack.prototype._initRemote = function (cb) {
         setTimeout(function() {
           for (var i = 0; i < data.replies.length; i++) {
             var reply = data.replies[i]
-            console.log('is reply arrived on index.js? ' + data.filePath)
-            console.log('index.js _remote.on changeReply insert: ' + reply.get('reply_id'));
+            debug('index.js _remote.on changeReply insert: ' + reply.get('reply_id')+ ' on: '+data.filePath);
             Reply.addReply({
               user_id: reply.get('user_id'),
               user_name: reply.get('user_name'),
@@ -42822,20 +43622,6 @@ Multihack.prototype._initRemote = function (cb) {
       }
     })
 
-    // shoot event from Editor to network.
-    Editor.on('change', function (data) {
-      // 현재 사용자가 에디터에서 문서 수정을 했을 때 내용을 네트워크에 보낸다.
-      self._remote.changeFile(data.filePath, data.change)
-    })
-    Editor.on('selection', function (data) {
-      // 현재 사용자가 에디터에서 텍스트 커서를 이동 했을 때 내용을 네트워크에 보낸다.
-      self._remote.changeSelection(data)
-    })
-    Reply.on('changeReply', function (data) {
-      // 현재 사용자가 에디터에서 댓글을 생성하거나 수정했을 때 내용을 네트워크에 보낸다.
-      self._remote.changeReply(data.filePath, data.optype, data.opval)
-    })
-
     if (typeof cb !== 'undefined') cb()
   }
 
@@ -42857,14 +43643,16 @@ Multihack.prototype._initRemote = function (cb) {
 
 module.exports = Multihack
 
-},{"./auth/user":410,"./editor/editor":411,"./editor/reply":412,"./filesystem/filesystem":415,"./filesystem/util":416,"./interface/interface":418,"./interface/lang/lang":419,"./network/hyperhostwrapper":424,"./network/multihack-core":425,"./network/voice":426}],418:[function(require,module,exports){
+},{"./auth/user":411,"./editor/codeeditor":412,"./editor/doceditor":413,"./editor/htmlviewer":414,"./editor/reply":415,"./filesystem/filesystem":418,"./filesystem/util":419,"./interface/interface":421,"./interface/lang/lang":422,"./network/hyperhostwrapper":430,"./network/multihack-core":431,"./network/voice":432,"debug":310}],421:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var Modal = require('./modal')
 var TreeView = require('./treeview')
 var PeerGraph = require('p2p-graph')
 var cuid = require('cuid')
+var PaneManager = require('./panemanager')
 var lang = require('./lang/lang')
+var split = require('split.js')
 var lg = lang.get.bind(lang)
 
 inherits(Interface, EventEmitter)
@@ -42908,12 +43696,12 @@ function Interface () {
   })
 
   // Setup contrast toggle
-  var contrast = false
-  document.getElementById('image-contrast').addEventListener('click', function () {
-    contrast = !contrast
-    document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
-    document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
-  })
+  // var contrast = false
+  // document.getElementById('image-contrast').addEventListener('click', function () {
+  //   contrast = !contrast
+  //   document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
+  //   document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
+  // })
 
   // Setup save button
   document.getElementById('save').addEventListener('click', function () {
@@ -42936,9 +43724,18 @@ function Interface () {
   })
 
   // Setup delete button
-  document.getElementById('delete').addEventListener('click', function () {
-    self.emit('deleteCurrent')
+  // document.getElementById('delete').addEventListener('click', function () {
+  //   self.emit('deleteCurrent')
+  // })
+
+  self.workspacePane = new PaneManager({
+    container: document.getElementById('main-workspace')
   })
+  
+  // split(["#sidebar", "#main-workspace"], { // 재대로 안된다.
+  //   gutterSize: 4,
+  //   cursor: "col-resize"
+  // })
 }
 
 Interface.prototype.newFileDialog = function (path, cb) {
@@ -42952,7 +43749,7 @@ Interface.prototype.newFileDialog = function (path, cb) {
   modal.on('done', function (e) {
     modal.close()
     var name = e.inputs[0].value
-    var type = e.target.dataset['type']
+    var type = e.target.dataset.type
     if (!name) {
       name = (type === 'dir' ? lg('new_folder') : lg('new_file')) + '-' + cuid().slice(-7,-1)
     }
@@ -43155,7 +43952,7 @@ Interface.prototype.showOverlay = function (msg, cb) {
 
 module.exports = new Interface()
 
-},{"./lang/lang":419,"./modal":421,"./treeview":423,"cuid":308,"events":325,"inherits":334,"p2p-graph":343}],419:[function(require,module,exports){
+},{"./lang/lang":422,"./modal":424,"./panemanager":425,"./treeview":429,"cuid":308,"events":325,"inherits":334,"p2p-graph":343,"split.js":377}],422:[function(require,module,exports){
 var translations = require('./translations')
 
 var mustache = require('mustache')
@@ -43195,7 +43992,7 @@ Lang.prototype.get = function (key, data) {
 
 module.exports = new Lang()
 
-},{"./translations":420,"events":325,"inherits":334,"mustache":342}],420:[function(require,module,exports){
+},{"./translations":423,"events":325,"inherits":334,"mustache":342}],423:[function(require,module,exports){
 module.exports={
   "en": {
     "save_success_title": "Save Completed",
@@ -43290,7 +44087,7 @@ module.exports={
     "leave_room": "룸 나가기"
   }
 }
-},{}],421:[function(require,module,exports){
+},{}],424:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 var mustache = require('mustache')
@@ -43356,7 +44153,287 @@ Modal.prototype.close = function () {
 
 module.exports = Modal
 
-},{"./templates":422,"events":325,"inherits":334,"mustache":342}],422:[function(require,module,exports){
+},{"./templates":428,"events":325,"inherits":334,"mustache":342}],425:[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+var split = require('split.js')
+var TabContainer = require('./tabcontainer')
+var HtmlViewer = require('../editor/htmlviewer')
+var lang = require('./lang/lang')
+var lg = lang.get.bind(lang)
+
+inherits(PaneManager, EventEmitter)
+
+function PaneManager (options) {
+  var self = this
+  if (!(self instanceof PaneManager)) return new PaneManager(options)
+  self.container = options.container
+  if(!self.container) throw Error("Panemanager: can not start without container!")
+  
+  // create main pane
+  var mainpane = document.createElement('div')
+  mainpane.className = 'pane'
+
+  self.mainPaneHolder = {
+    type: 'paneHolder', 
+    dom: self.container, 
+    splitation: 'vertical', 
+    panelist: [{
+      type: 'pane', 
+      dom: mainpane, 
+      showidx: 0, 
+      tabcontainer: null,
+      viewlist: [] // tab으로 관리한다.
+    }]
+  }
+  // ex: {type:paneHolder, dom:div, splistation: vertical, panelist:[]}
+  // ex: {type:pane, dom:div, viewlist:[]}
+  self.focusedPane = self.mainPaneHolder.panelist[0]
+  self.focusedPane.tabcontainer = new TabContainer()
+  self.focusedPane.dom.appendChild(self.focusedPane.tabcontainer.dom)
+
+  self._lastview = null
+  self._currentview = null
+
+  // create start dummy view
+  self.addView('Welcome!',new HtmlViewer({content:
+    '<div class="welcome-view">' +
+    '<h1>Rellat</h1>' + 
+    '<span>The Simultaneous Collaboration Coding service to show people how to make code in real time.</span>' +
+    '<br><br><span>Supported File Types</span>' +
+    '<ul><li>CodeMirror code editor : js, coffee, ts, json, css, sass, less, html, xml, py, php, md</li>'+
+    '<li>Quill.js rich text editor : quill</li>'+
+    '<li>Image viewer - in progress </li>'+
+    '<li>unsupported file type will be ignored</li>'+
+    '</ul>'+    
+    '</div>'
+  }))
+
+  self.focusedPane.tabcontainer.on('change', function (event) {
+    self.changeView(event.view)
+  })
+  self.focusedPane.tabcontainer.on('close', function (event) {
+    self.closeView(event.view)
+  })
+
+  self.container.appendChild(self.focusedPane.dom)
+
+}
+// PaneManager.prototype.addPane = function (pane, splitation) {
+//   var self = this
+// }
+PaneManager.prototype.isOnPane = function (filepath) {
+  var self = this
+  // view가 focusedPane에 이미 추가되어 있는지 확인하기
+  var checkview = false
+  self.focusedPane.viewlist.forEach(function(view) {
+    console.log('check file exist: '+ filepath + ' ' + view.getWorkingFile().path)
+    if(view.getWorkingFile().path == filepath) { checkview = view }
+  }, this);
+  return checkview
+}
+PaneManager.prototype.addView = function (title, view) {
+  var self = this
+  var lastView = self.focusedPane.dom.querySelector('.editor-view.active')
+  if (lastView) {
+    lastView.className = lastView.className.replace(" active", "")
+    self._lastview = self._currentview
+  }
+
+  var showidx = self.focusedPane.viewlist.push(view) - 1
+  self.focusedPane.showidx = showidx
+  self.focusedPane.viewlist[showidx].container.className += " active"
+  self.focusedPane.dom.appendChild(self.focusedPane.viewlist[showidx].container)
+  self._currentview = view
+
+  //add tab button
+  var newtab = self.focusedPane.tabcontainer.newTab(title, self.focusedPane.viewlist[showidx])
+  self.focusedPane.viewlist[showidx].bindTab(newtab)
+}
+PaneManager.prototype.changeView = function (view) {
+  var self = this
+  var tempview = self.focusedPane.viewlist[self.focusedPane.viewlist.indexOf(view)]
+  if (!tempview) return
+
+  var lastView = self.focusedPane.dom.querySelector('.editor-view.active')
+  if (lastView) {
+    lastView.className = lastView.className.replace(" active", "")
+    self._lastview = self._currentview
+  }
+  var lastTab = self.focusedPane.tabcontainer.dom.querySelector('.tab.active')
+  if (lastTab) lastTab.className = lastTab.className.replace(" active", "")
+
+  tempview.container.className += " active"
+  tempview.bindedTab.setActive()
+  self._currentview = view  
+
+  self.emit('viewChange',{view:view})
+}
+PaneManager.prototype.closeView = function (view) {
+  var self = this
+  if(self.focusedPane.viewlist.indexOf(view) !== -1) {
+    var tempview = self.focusedPane.viewlist[self.focusedPane.viewlist.indexOf(view)]
+    self.focusedPane.dom.removeChild(tempview.container)
+    self.focusedPane.viewlist.splice(self.focusedPane.viewlist.indexOf(view),1)
+    view.close()
+    // observe, bind 풀기
+    // editer close, distroy
+    self.emit('closeview',{view: view})
+    // switch vew
+    if(self._lastview && self._lastview !== view) {
+      self.changeView(self._lastview)
+    }else if(self.focusedPane.viewlist[self.focusedPane.viewlist.length - 1]) {
+      console.log('nnn2 ')      
+      self.changeView(self.focusedPane.viewlist[self.focusedPane.viewlist.length - 1])
+    }
+  }
+}
+
+module.exports = PaneManager
+
+},{"../editor/htmlviewer":414,"./lang/lang":422,"./tabcontainer":427,"events":325,"inherits":334,"split.js":377}],426:[function(require,module,exports){
+var mustache = require('mustache')
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+
+var template = '<span>{{title}}</span><div class="close">ⓧ</div>'
+
+inherits(Tab, EventEmitter)
+
+function Tab (title,bindedView) {
+  var self = this
+  if (!(self instanceof Tab)) return new Tab()
+  if(!bindedView) throw Error('Tab: can not create tab without view!')
+
+  self.dom = document.createElement('div')
+  self.dom.className = 'tab active'
+  self.dom.innerHTML = mustache.render(template, {title: title})
+
+  self.dom.addEventListener('click', self._onclick.bind(self))
+  self.dom.querySelector('.close').addEventListener('click', self.close.bind(self))
+
+  self.title = title
+  self.bindedView = bindedView
+}
+
+Tab.prototype._onclick = function (e) {
+  var self = this
+  if (e) e.stopPropagation()
+  self.emit('click')
+}
+
+Tab.prototype.setActive = function () {
+  var self = this
+  self.dom.className += ' active'
+}
+
+Tab.prototype.close = function (e) {
+  var self = this
+  if (e) e.stopPropagation()
+  self.emit('close')
+}
+
+Tab.prototype.rename = function (newtitle) {
+  var self = this
+
+  self.title = newtitle
+
+  self.dom.innerHTML = mustache.render(template, {title: newtitle})
+  self.dom.querySelector('.close').addEventListener('click', self._onclose.bind(self))
+}
+
+module.exports = Tab
+},{"events":325,"inherits":334,"mustache":342}],427:[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+var Tab = require('./tab')
+var MAX_TABS = 8
+
+inherits(TabContainer, EventEmitter)
+
+function TabContainer () {
+  var self = this
+  if (!(self instanceof TabContainer)) return new TabContainer()
+
+  self.dom = document.createElement('div')
+  self.dom.className = 'tab-container'
+  self.tabs = []
+}
+
+// TabContainer.prototype.fileOpened = function (title) {
+//   var self = this
+//   var lastTab = self.dom.querySelector('.active.tab')
+//   if (lastTab) lastTab.className = 'tab'
+//   for (var i = 0; i < self.tabs.length; i++) {
+//     if (self.tabs[i].title === title) {
+//       self.tabs[i].setActive()
+//       return
+//     }
+//   }
+//   self.newTab(title)
+// }
+
+TabContainer.prototype.newTab = function (title, view) {
+  var self = this
+
+  var lastTab = self.dom.querySelector('.active.tab')
+  if (lastTab) lastTab.className = 'tab'
+
+  var tab = new Tab(title, view)
+
+  tab.on('click', function () {
+    self.emit('change', {
+      tab: tab,
+      view: tab.bindedView
+    })
+  })
+
+  tab.on('close', function () {
+    self.dom.removeChild(tab.dom)
+    // self.tabs.splice(self.tabs.indexOf(tab), 1)
+    self.emit('close', {
+      tab: tab,
+      view: tab.bindedView
+    })
+  })
+
+  self.tabs.push(tab)
+  self.dom.insertBefore(tab.dom, self.dom.firstChild)
+
+  if (self.tabs.length > MAX_TABS) {
+    self.tabs[0].close()
+    self.tabs.splice(0, 1)
+  }
+  return tab
+}
+TabContainer.prototype.deleteTab = function (tab) {
+  var self = this
+  self.tabs.splice(self.tabs.indexOf(tab), 1)
+  delete tab
+}
+
+TabContainer.prototype.fileRenamed = function (title, newtitle) {
+  var self = this
+  for (var i = 0; i < self.tabs.length; i++) {
+    if (self.tabs[i].title === title) {
+      self.tabs[i].rename(newtitle)
+      return
+    }
+  }
+}
+
+TabContainer.prototype.fileDeleted = function (title) {
+  var self = this
+  for (var i = 0; i < self.tabs.length; i++) {
+    if (self.tabs[i].title === title) {
+      self.tabs[i].close()
+      return
+    }
+  }
+}
+
+module.exports = TabContainer
+},{"./tab":426,"events":325,"inherits":334}],428:[function(require,module,exports){
 var dict = {}
 var lang = require('./lang/lang')
 var lg = lang.get.bind(lang)
@@ -43409,7 +44486,7 @@ dict['network'] =
     '<button class="no-button">'+lg('close')+'</button>'
 
 module.exports = dict
-},{"./lang/lang":419}],423:[function(require,module,exports){
+},{"./lang/lang":422}],429:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 
@@ -43561,7 +44638,7 @@ TreeView.prototype.addDir = function (parentElement, file) {
 
 module.exports = TreeView
 
-},{"events":325,"inherits":334}],424:[function(require,module,exports){
+},{"events":325,"inherits":334}],430:[function(require,module,exports){
 /* globals HyperHost */
 
 // Wraps the HyperHost instance
@@ -43604,10 +44681,8 @@ HyperHostWrapper.prototype.deploy = function (tree) {
 
 module.exports = new HyperHostWrapper()
 
-},{"events":325,"inherits":334}],425:[function(require,module,exports){
-/* globals window */
-
-const debug = require('debug')('MH:core')
+},{"events":325,"inherits":334}],431:[function(require,module,exports){
+var debug = require('debug')('MH:core')
 
 var Y = require('yjs')
 require('y-memory')(Y)
@@ -43620,6 +44695,7 @@ require('y-richtext')(Y)
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
+var util = require('../filesystem/util')
 var Voice
 
 inherits(RemoteManager, EventEmitter)
@@ -43637,22 +44713,17 @@ function RemoteManager (opts) {
   self.yfs = null
   self.ySelections = null
   self.posFromIndex = function (filePath, index, cb) {
-    console.warn('No "remote.posFromIndex" provided. Unable to apply change!')
+    throw Error('No "remote.posFromIndex" provided. Unable to apply change!')
   }
   self.client = null
   self.voice = null
   self.peers = []
   self.lastSelection = null
   self.replyUpdate = function (filePath, replies, cb) {
-    console.warn('No "remote.replyUpdate" provided. Unable to apply change!')
+    throw Error('No "remote.replyUpdate" provided. Unable to apply change!')
   }
   self.replyLazyUpdate = null
-  self.editerBindedObserver = {
-    textobserver: null,
-    texttarget: null,
-    replyobserver: null,
-    replytarget: null
-  }
+  self.bindedObservers = {}
 
   var tokens = {}
   self.mutualExcluse = function (key, f) {
@@ -43720,6 +44791,10 @@ function RemoteManager (opts) {
       self.fileoperation('add', path, self.yfs.get(path))      
     })
 
+    self.yfs.observe(function (event) {
+      self.fileoperation(event.type, event.name, event.value)
+    })
+
     self.ySelections.observe(function (event) {
       event.values.forEach(function (sel) {
         if (sel.id !== self.id || !self.id) {
@@ -43730,47 +44805,43 @@ function RemoteManager (opts) {
       })
     })
 
-    self.yfs.observe(function (event) {
-      self.fileoperation(event.type, event.name, eveant.value)
-    })
     self.emit('ready')
   })
 }
 RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
   var self = this
-  if (optype === 'add') { // create file/folder
-    if (content instanceof Y.Text.typeDefinition.class) {
+  if (optype === 'add' || optype === 'update') { // create file/folder
+    if (optype === 'update') { // delete old file, when a file with the same name has been added
+      self.emit('deleteFile', { filePath: filePath })
+    }
+    var filetype = util.findFileType(filePath)
+    if (filetype === 'text') {
       self.emit('createFile', {
         filePath: filePath,
         content: content.toString()
       })
-    } else if (content instanceof Y.Array.typeDefinition.class) {
-      var pathdiv = filePath.split('.')
-      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
-      }
-    } else {
+    } else if (filetype === 'image') {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content
+      })
+    } else if (filetype === 'quilljs') {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content.toDelta()
+      })
+    } else if (filetype === 'replydb') {
+      // replydb does not saved on FileSystem.
+    } else if(content === 'directory') {
       self.emit('createDir', {
         path: filePath
       })
-    }
-  } else if (optype === 'update') {
-    // a file with the same name has been added
-    self.emit('deleteFile', {
-      filePath: filePath
-    })
-    if (content instanceof Y.Text.typeDefinition.class) {
+    } else if (filetype === 'unknown') {
       self.emit('createFile', {
         filePath: filePath,
-        content: content.toString()
+        content: content
       })
-    } else if (content instanceof Y.Array.typeDefinition.class) {
-      var pathdiv = filePath.split('.')
-      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
-      }
-    } else {
-      self.emit('createDir', {
-        filePath: filePath
-      })
+      // TODO: think about what to do with unknown file type
     }
   } else if (optype === 'delete') { // delete
     self.emit('deleteFile', {
@@ -43778,29 +44849,43 @@ RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
     })
   }
 }
-RemoteManager.prototype.setObserver = function (filePath, targetstr) {
+RemoteManager.prototype.onObserver = function (filePath) {
   var self = this
   setTimeout(function() {
-    console.log('observer setting: ' + filePath + ' ' + targetstr);
-    if(self.editerBindedObserver[targetstr + 'observer']) self.editerBindedObserver[targetstr + 'target'].unobserve(self.editerBindedObserver[targetstr + 'observer'])
-    if(targetstr === 'text') self.editerBindedObserver[targetstr + 'observer'] = self._onYTextAdd.bind(self, filePath)
-    else if(targetstr === 'reply') self.editerBindedObserver[targetstr + 'observer'] = self._onReplyAdd.bind(self, filePath)
-    else return
-    self.editerBindedObserver[targetstr + 'target'] = self.yfs.get(filePath)
-    self.editerBindedObserver[targetstr + 'target'].observe(self.editerBindedObserver[targetstr + 'observer'])
+    debug('observer setting: ' + filePath);
+    if(self.bindedObservers[filePath]) self.offObserver(filePath)
+    if(util.findFileType(filePath) === 'text') {
+      self.bindedObservers[filePath] = self._onYTextAdd.bind(self, filePath)
+    } else if(util.findFileType(filePath) === 'replydb') {
+      self.bindedObservers[filePath] = self._onReplyAdd.bind(self, filePath)
+    } else if(util.findFileType(filePath) === 'quilljs') {
+      self.bindedObservers[filePath] = self._onYRichtextAdd.bind(self, filePath)
+    } else return
+    self.bindedObservers[filePath + 'target'] = self.yfs.get(filePath)
+    debug('observe: '+ typeof self.bindedObservers[filePath + 'target'])
+    self.bindedObservers[filePath + 'target'].observe(self.bindedObservers[filePath])
   },100)
 }
-
+RemoteManager.prototype.offObserver = function (filePath) {
+  var self = this
+  self.bindedObservers[filePath + 'target'].unobserve(self.bindedObservers[filePath])
+  delete self.bindedObservers[filePath + 'target']
+  delete self.bindedObservers[filePath]
+}
 RemoteManager.prototype.getContent = function (filePath) {
   var self = this
-  return self.yfs.get(filePath).toString()
+  if(util.findFileType(filePath) === 'text') 
+    return self.yfs.get(filePath).toString()
+  else if(util.findFileType(filePath) === 'quilljs') 
+    return self.yfs.get(filePath).toDelta()
+  else return self.yfs.get(filePath)
 }
 
 RemoteManager.prototype.getReplyContent = function (filePath) {
   var self = this
   var yreplies = self.yfs.get(filePath)
   var replies = []
-  if (typeof yreplies === 'undefined') return replies
+  if (!yreplies) return replies
   for (var i = 0; i < yreplies.toArray().length; i++) {
     var reply = yreplies.get(i)
     var robj = {
@@ -43815,30 +44900,34 @@ RemoteManager.prototype.getReplyContent = function (filePath) {
       content: reply.get('content')
     }
     replies.push(robj)
-    console.log('getReplyContent: '+ JSON.stringify(robj));
+    debug('getReplyContent: '+ JSON.stringify(robj));
   }
   return replies
 }
 
-RemoteManager.prototype.createFile = function (filePath, contents) {
+RemoteManager.prototype.createFile = function (filePath, content) {
   var self = this
   self.onceReady(function () {
-    var pathdiv = filePath.split('.')
-    if (pathdiv[pathdiv.length - 1] === 'ymap') {
-      self.yfs.set(filePath, Y.Map)
-      // TODO: make a file type for richtext, trello board, etc.
-    } else {
+    content = content || ''
+    var filetype = util.findFileType(filePath)    
+    if (filetype === 'image') {
+      self.yfs.set(filePath, content)
+    } else if (filetype === 'text') {
       self.yfs.set(filePath + '.replydb', Y.Array)
       self.yfs.set(filePath, Y.Text)
-      insertChunked(self.yfs.get(filePath), 0, contents || '')
+      insertChunked(self.yfs.get(filePath), 0, content)
+    } else if (filetype === 'quilljs') {
+      self.yfs.set(filePath + '.replydb', Y.Array)
+      self.yfs.set(filePath, Y.Richtext)
+      //insertChunked(self.yfs.get(filePath), 0, content)
     }
   })
 }
 
-RemoteManager.prototype.createDir = function (filePath, contents) {
+RemoteManager.prototype.createDir = function (filePath, content) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(filePath, 'DIR')
+    self.yfs.set(filePath, 'directory')
   })
 }
 
@@ -43864,15 +44953,19 @@ function chunkString (str, size) {
 RemoteManager.prototype.replaceFile = function (oldPath, newPath) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
     self.yfs.set(newPath, self.yfs.get(oldPath))
+    self.yfs.delete(oldPath)
+    if(self.yfs.get(oldPath + '.replydb')) {
+      self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
+      self.yfs.delete(oldPath + '.replydb')   
+    }  
   })
 }
 RemoteManager.prototype.deleteFile = function (filePath) {
   var self = this
   self.onceReady(function () {
     self.yfs.delete(filePath)
-    self.yfs.delete(filePath + '.replydb')
+    if(self.yfs.get(filePath + '.replydb')) self.yfs.delete(filePath + '.replydb')
   })
 }
 
@@ -43921,7 +45014,7 @@ RemoteManager.prototype.changeReply = function (filePath, optype, opval) {
         reply.set('order', opval.order)
         reply.set('line_num', opval.line_num)
         reply.set('content', opval.content)
-        console.log('reply sent by you: ' + replydb.get(ridx).keys())
+        debug('reply sent by you: ' + replydb.get(ridx).keys())
       } else if (optype === 'delete') {
         for (var i = 0; i < replydb.toArray().length; i++) {
           if (replydb.get(i).get('reply_id') === opval.reply_id) {
@@ -44009,14 +45102,14 @@ RemoteManager.prototype._onYTextAdd = function (filePath, event) {
 RemoteManager.prototype._onReplyAdd = function (filePath, event) {
   var self = this
   self.mutualExcluse(filePath, function () {
-    console.log('sync: got reply')
+    debug('sync: got reply')
     if (event.type === 'insert') {
       self.emit('changeReply', {
         filePath: filePath,
         type: 'insert',
         replies: event.values
       })
-      console.log('sync: reply added!')
+      debug('sync: reply added!')
     } else if (event.type === 'delete') {
       self.emit('changeReply', {
         filePath: filePath,
@@ -44031,10 +45124,19 @@ RemoteManager.prototype._onReplyAdd = function (filePath, event) {
     //     type: 'update',
     //     name: event.name,
     //     value: event.value
-    //   })
+    //   })q
     }
   })
 }
+
+RemoteManager.prototype._onYRichtextAdd = function (filePath, event) {
+  var self = this
+  self.mutualExcluse(filePath, function () {
+    // bindQuill을 사용하는 동안은 할 일이 없다. 추적용
+    debug('Richtext event recieved: '+ JSON.stringify(event))
+  })
+}
+
 RemoteManager.prototype._onLostPeer = function (peer) {
   var self = this
   self.ySelections.toArray().forEach(function (sel, i) {
@@ -44065,7 +45167,7 @@ RemoteManager.prototype.destroy = function () {
 
 module.exports = RemoteManager
 
-},{"./y-multihack":427,"debug":310,"events":325,"inherits":334,"y-array":396,"y-map":397,"y-memory":398,"y-richtext":400,"y-text":401,"yjs":409}],426:[function(require,module,exports){
+},{"../filesystem/util":419,"./y-multihack":433,"debug":310,"events":325,"inherits":334,"y-array":397,"y-map":398,"y-memory":399,"y-richtext":401,"y-text":402,"yjs":410}],432:[function(require,module,exports){
 var getusermedia = require('getusermedia')
 
 function VoiceCall (socket, client, room) {
@@ -44195,7 +45297,7 @@ VoiceCall.prototype.toggle = function () {
 
 module.exports = VoiceCall
 
-},{"getusermedia":328}],427:[function(require,module,exports){
+},{"getusermedia":328}],433:[function(require,module,exports){
 (function (global){
 /* globals Y */
 
@@ -44437,6 +45539,7 @@ Connector.prototype.disconnect = function () {
 }
 
 Connector.prototype.destroy = function () {
+  var self = this
   this.disconnect()
   
   // destroy p2p connection
@@ -44510,5 +45613,5 @@ if (typeof Y !== 'undefined') {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"get-browser-rtc":327,"multihack-wire":341,"simple-signal-client":367,"socket.io-client":368,"stream-throttle":378,"yjs":409}]},{},[417])(417)
+},{"get-browser-rtc":327,"multihack-wire":341,"simple-signal-client":367,"socket.io-client":368,"stream-throttle":379,"yjs":410}]},{},[420])(420)
 });

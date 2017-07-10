@@ -8,6 +8,7 @@ function Directory (path) {
   self.path = path
   self.nodes = []
   self.isDir = true
+  self.type = 'directory'
 }
 
 module.exports = Directory

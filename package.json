@@ -1,6 +1,6 @@
 {
   "name": "rellat-web",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "The Simultaneous Collaboration Coding service to show people how to make code in real time.",
   "main": "src/index.js",
   "keywords": [
@@ -44,12 +44,15 @@
     "safe-buffer": "^5.0.1",
     "simple-signal-client": "^1.2.6",
     "socket.io-client": "^2.0.2",
+    "split.js": "^1.3.5",
+    "stream-buffers": "^3.0.1",
     "stream-throttle": "^0.1.3",
     "y-array": "^10.0.6",
     "y-map": "^10.0.5",
     "y-memory": "^8.0.8",
     "y-richtext": "^9.0.8",
     "y-text": "^9.4.0",
+    "y-webrtc": "^8.0.7",
     "y-websockets-client": "^8.0.16",
     "yjs": "^12.1.7"
   }

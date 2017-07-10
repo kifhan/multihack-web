@@ -9,13 +9,16 @@
     <link rel="stylesheet" href="static/css/codemirror.css">
     <link rel="stylesheet" href="static/css/codemirror-themes/material.css">
     <link rel="stylesheet" href="static/css/show-hint.css">
-    <!-- MultiHack -->
-    <link rel="stylesheet" href="static/css/codemirror-themes/atom.css">
     <!--atom-->
-    <link rel="stylesheet" href="static/css/codemirror-themes/codepen.css">
+    <link rel="stylesheet" href="static/css/codemirror-themes/atom.css">
     <!--codepen -->
-    <link rel="stylesheet" href="static/css/codemirror-themes/brackets.css">
+    <link rel="stylesheet" href="static/css/codemirror-themes/codepen.css">
     <!--brackets -->
+    <link rel="stylesheet" href="static/css/codemirror-themes/brackets.css">
+    <!-- Quill js -->
+    <link rel="stylesheet" href="//cdn.quilljs.com/1.2.4/quill.snow.css">
+    <!--<link rel="stylesheet" href="//cdn.quilljs.com/1.2.4/quill.bubble.css">-->
+    <!-- MultiHack -->
     <link rel="stylesheet" href="static/css/filetree/treestyles.css">
     <link rel="stylesheet" href="static/css/themes.css">
     <link rel="stylesheet" href="static/css/style.css">
@@ -34,16 +37,6 @@
         }
         #fb-login-button {
             float:right;margin-top:15px;
-        }
-        .CodeMirror {
-            font-family: Monaco;
-        }
-        .CodeMirror-linewidget {
-            color: black;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-        .CM-buttonsPanel .cm-reply {
-            color: black;
         }
     </style>
 </head>
@@ -91,8 +84,8 @@
 
         </ol>
     </div>
-    <div class="workspace">
-        <div class="image-wrapper" style="display:none;">
+    <div id="main-workspace" class="workspace">
+        <!--<div class="image-wrapper" style="display:none;">
             <button id="image-contrast" class="icon-button image-contrast">
                 <img src="static/img/contrast-white.png" />
             </button>
@@ -108,7 +101,7 @@
         </div>
         <button id="delete" class="icon-button delete">
             <img src="static/img/garbage.png">
-        </button>
+        </button>-->
     </div>
     <div id="modal" class="modal text-center theme-dark-border"></div>
     <div id="overlay" class="blocking-overlay overlay"></div>
@@ -135,6 +128,9 @@
 <script async src="static/js/vendor/addons/xml-hint.js"></script>
 <script async src="static/js/vendor/addons/html-hint.js"></script>
 <script async src="static/js/vendor/addons/panel.js"></script>
+
+<!-- Quill js editor -->
+<script src="//cdn.quilljs.com/1.2.4/quill.js" charset="utf-8"></script>
 
 <!--For saving projects-->
 <script src="static/js/vendor/jszip.min.js"></script>

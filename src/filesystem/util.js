@@ -21,11 +21,13 @@ var CM_MAPPINGS = {
   'less': 'css',
   'html': 'htmlmixed',
   'xml': 'xml',
-  'php': 'application/x-httpd-php'
+  'py': 'python',
+  'php': 'application/x-httpd-php',
+  'md': 'markdown'
 }
-util.pathToMode = function (path) {
+util.pathToCodeMode = function (path) {
   return {
-    name: CM_MAPPINGS[util.getExtension(path)],
+    name: CM_MAPPINGS[util.getExtension(path)] || null,
     globalVars: true
   }
 }
@@ -42,7 +44,21 @@ var VIEW_MAPPINGS = {
   'ico': 'image'
 }
 util.getViewMapping = function (path) {
-  return VIEW_MAPPINGS[util.getExtension(path)] || 'text'
+  return VIEW_MAPPINGS[util.getExtension(path)] || null
+}
+
+var PATH_MAPPINGS = {
+  'quill': 'quilljs',
+  'replydb': 'replydb'
+}
+util.pathCheck = function (path) {
+  return PATH_MAPPINGS[util.getExtension(path)] || null
+}
+util.findFileType = function (path) {
+  return (util.pathCheck(path) 
+  || (!!util.pathToCodeMode(path).name?'text':null) 
+  || util.getViewMapping(path) 
+  || 'unknown')
 }
 
 // Creates a zip archive from a file tree

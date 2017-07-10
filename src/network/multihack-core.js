@@ -1,6 +1,4 @@
-/* globals window */
-
-const debug = require('debug')('MH:core')
+var debug = require('debug')('MH:core')
 
 var Y = require('yjs')
 require('y-memory')(Y)
@@ -13,6 +11,7 @@ require('y-richtext')(Y)
 
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
+var util = require('../filesystem/util')
 var Voice
 
 inherits(RemoteManager, EventEmitter)
@@ -30,22 +29,17 @@ function RemoteManager (opts) {
   self.yfs = null
   self.ySelections = null
   self.posFromIndex = function (filePath, index, cb) {
-    console.warn('No "remote.posFromIndex" provided. Unable to apply change!')
+    throw Error('No "remote.posFromIndex" provided. Unable to apply change!')
   }
   self.client = null
   self.voice = null
   self.peers = []
   self.lastSelection = null
   self.replyUpdate = function (filePath, replies, cb) {
-    console.warn('No "remote.replyUpdate" provided. Unable to apply change!')
+    throw Error('No "remote.replyUpdate" provided. Unable to apply change!')
   }
   self.replyLazyUpdate = null
-  self.editerBindedObserver = {
-    textobserver: null,
-    texttarget: null,
-    replyobserver: null,
-    replytarget: null
-  }
+  self.bindedObservers = {}
 
   var tokens = {}
   self.mutualExcluse = function (key, f) {
@@ -113,6 +107,10 @@ function RemoteManager (opts) {
       self.fileoperation('add', path, self.yfs.get(path))      
     })
 
+    self.yfs.observe(function (event) {
+      self.fileoperation(event.type, event.name, event.value)
+    })
+
     self.ySelections.observe(function (event) {
       event.values.forEach(function (sel) {
         if (sel.id !== self.id || !self.id) {
@@ -123,47 +121,43 @@ function RemoteManager (opts) {
       })
     })
 
-    self.yfs.observe(function (event) {
-      self.fileoperation(event.type, event.name, eveant.value)
-    })
     self.emit('ready')
   })
 }
 RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
   var self = this
-  if (optype === 'add') { // create file/folder
-    if (content instanceof Y.Text.typeDefinition.class) {
+  if (optype === 'add' || optype === 'update') { // create file/folder
+    if (optype === 'update') { // delete old file, when a file with the same name has been added
+      self.emit('deleteFile', { filePath: filePath })
+    }
+    var filetype = util.findFileType(filePath)
+    if (filetype === 'text') {
       self.emit('createFile', {
         filePath: filePath,
         content: content.toString()
       })
-    } else if (content instanceof Y.Array.typeDefinition.class) {
-      var pathdiv = filePath.split('.')
-      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
-      }
-    } else {
+    } else if (filetype === 'image') {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content
+      })
+    } else if (filetype === 'quilljs') {
+      self.emit('createFile', {
+        filePath: filePath,
+        content: content.toDelta()
+      })
+    } else if (filetype === 'replydb') {
+      // replydb does not saved on FileSystem.
+    } else if(content === 'directory') {
       self.emit('createDir', {
         path: filePath
       })
-    }
-  } else if (optype === 'update') {
-    // a file with the same name has been added
-    self.emit('deleteFile', {
-      filePath: filePath
-    })
-    if (content instanceof Y.Text.typeDefinition.class) {
+    } else if (filetype === 'unknown') {
       self.emit('createFile', {
         filePath: filePath,
-        content: content.toString()
+        content: content
       })
-    } else if (content instanceof Y.Array.typeDefinition.class) {
-      var pathdiv = filePath.split('.')
-      if (pathdiv[pathdiv.length - 1] === 'replydb') { // replydb does not saved on file system.
-      }
-    } else {
-      self.emit('createDir', {
-        filePath: filePath
-      })
+      // TODO: think about what to do with unknown file type
     }
   } else if (optype === 'delete') { // delete
     self.emit('deleteFile', {
@@ -171,29 +165,43 @@ RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
     })
   }
 }
-RemoteManager.prototype.setObserver = function (filePath, targetstr) {
+RemoteManager.prototype.onObserver = function (filePath) {
   var self = this
   setTimeout(function() {
-    console.log('observer setting: ' + filePath + ' ' + targetstr);
-    if(self.editerBindedObserver[targetstr + 'observer']) self.editerBindedObserver[targetstr + 'target'].unobserve(self.editerBindedObserver[targetstr + 'observer'])
-    if(targetstr === 'text') self.editerBindedObserver[targetstr + 'observer'] = self._onYTextAdd.bind(self, filePath)
-    else if(targetstr === 'reply') self.editerBindedObserver[targetstr + 'observer'] = self._onReplyAdd.bind(self, filePath)
-    else return
-    self.editerBindedObserver[targetstr + 'target'] = self.yfs.get(filePath)
-    self.editerBindedObserver[targetstr + 'target'].observe(self.editerBindedObserver[targetstr + 'observer'])
+    debug('observer setting: ' + filePath);
+    if(self.bindedObservers[filePath]) self.offObserver(filePath)
+    if(util.findFileType(filePath) === 'text') {
+      self.bindedObservers[filePath] = self._onYTextAdd.bind(self, filePath)
+    } else if(util.findFileType(filePath) === 'replydb') {
+      self.bindedObservers[filePath] = self._onReplyAdd.bind(self, filePath)
+    } else if(util.findFileType(filePath) === 'quilljs') {
+      self.bindedObservers[filePath] = self._onYRichtextAdd.bind(self, filePath)
+    } else return
+    self.bindedObservers[filePath + 'target'] = self.yfs.get(filePath)
+    debug('observe: '+ typeof self.bindedObservers[filePath + 'target'])
+    self.bindedObservers[filePath + 'target'].observe(self.bindedObservers[filePath])
   },100)
 }
-
+RemoteManager.prototype.offObserver = function (filePath) {
+  var self = this
+  self.bindedObservers[filePath + 'target'].unobserve(self.bindedObservers[filePath])
+  delete self.bindedObservers[filePath + 'target']
+  delete self.bindedObservers[filePath]
+}
 RemoteManager.prototype.getContent = function (filePath) {
   var self = this
-  return self.yfs.get(filePath).toString()
+  if(util.findFileType(filePath) === 'text') 
+    return self.yfs.get(filePath).toString()
+  else if(util.findFileType(filePath) === 'quilljs') 
+    return self.yfs.get(filePath).toDelta()
+  else return self.yfs.get(filePath)
 }
 
 RemoteManager.prototype.getReplyContent = function (filePath) {
   var self = this
   var yreplies = self.yfs.get(filePath)
   var replies = []
-  if (typeof yreplies === 'undefined') return replies
+  if (!yreplies) return replies
   for (var i = 0; i < yreplies.toArray().length; i++) {
     var reply = yreplies.get(i)
     var robj = {
@@ -208,30 +216,34 @@ RemoteManager.prototype.getReplyContent = function (filePath) {
       content: reply.get('content')
     }
     replies.push(robj)
-    console.log('getReplyContent: '+ JSON.stringify(robj));
+    debug('getReplyContent: '+ JSON.stringify(robj));
   }
   return replies
 }
 
-RemoteManager.prototype.createFile = function (filePath, contents) {
+RemoteManager.prototype.createFile = function (filePath, content) {
   var self = this
   self.onceReady(function () {
-    var pathdiv = filePath.split('.')
-    if (pathdiv[pathdiv.length - 1] === 'ymap') {
-      self.yfs.set(filePath, Y.Map)
-      // TODO: make a file type for richtext, trello board, etc.
-    } else {
+    content = content || ''
+    var filetype = util.findFileType(filePath)    
+    if (filetype === 'image') {
+      self.yfs.set(filePath, content)
+    } else if (filetype === 'text') {
       self.yfs.set(filePath + '.replydb', Y.Array)
       self.yfs.set(filePath, Y.Text)
-      insertChunked(self.yfs.get(filePath), 0, contents || '')
+      insertChunked(self.yfs.get(filePath), 0, content)
+    } else if (filetype === 'quilljs') {
+      self.yfs.set(filePath + '.replydb', Y.Array)
+      self.yfs.set(filePath, Y.Richtext)
+      //insertChunked(self.yfs.get(filePath), 0, content)
     }
   })
 }
 
-RemoteManager.prototype.createDir = function (filePath, contents) {
+RemoteManager.prototype.createDir = function (filePath, content) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(filePath, 'DIR')
+    self.yfs.set(filePath, 'directory')
   })
 }
 
@@ -257,15 +269,19 @@ function chunkString (str, size) {
 RemoteManager.prototype.replaceFile = function (oldPath, newPath) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
     self.yfs.set(newPath, self.yfs.get(oldPath))
+    self.yfs.delete(oldPath)
+    if(self.yfs.get(oldPath + '.replydb')) {
+      self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
+      self.yfs.delete(oldPath + '.replydb')   
+    }  
   })
 }
 RemoteManager.prototype.deleteFile = function (filePath) {
   var self = this
   self.onceReady(function () {
     self.yfs.delete(filePath)
-    self.yfs.delete(filePath + '.replydb')
+    if(self.yfs.get(filePath + '.replydb')) self.yfs.delete(filePath + '.replydb')
   })
 }
 
@@ -314,7 +330,7 @@ RemoteManager.prototype.changeReply = function (filePath, optype, opval) {
         reply.set('order', opval.order)
         reply.set('line_num', opval.line_num)
         reply.set('content', opval.content)
-        console.log('reply sent by you: ' + replydb.get(ridx).keys())
+        debug('reply sent by you: ' + replydb.get(ridx).keys())
       } else if (optype === 'delete') {
         for (var i = 0; i < replydb.toArray().length; i++) {
           if (replydb.get(i).get('reply_id') === opval.reply_id) {
@@ -402,14 +418,14 @@ RemoteManager.prototype._onYTextAdd = function (filePath, event) {
 RemoteManager.prototype._onReplyAdd = function (filePath, event) {
   var self = this
   self.mutualExcluse(filePath, function () {
-    console.log('sync: got reply')
+    debug('sync: got reply')
     if (event.type === 'insert') {
       self.emit('changeReply', {
         filePath: filePath,
         type: 'insert',
         replies: event.values
       })
-      console.log('sync: reply added!')
+      debug('sync: reply added!')
     } else if (event.type === 'delete') {
       self.emit('changeReply', {
         filePath: filePath,
@@ -424,10 +440,19 @@ RemoteManager.prototype._onReplyAdd = function (filePath, event) {
     //     type: 'update',
     //     name: event.name,
     //     value: event.value
-    //   })
+    //   })q
     }
   })
 }
+
+RemoteManager.prototype._onYRichtextAdd = function (filePath, event) {
+  var self = this
+  self.mutualExcluse(filePath, function () {
+    // bindQuill을 사용하는 동안은 할 일이 없다. 추적용
+    debug('Richtext event recieved: '+ JSON.stringify(event))
+  })
+}
+
 RemoteManager.prototype._onLostPeer = function (peer) {
   var self = this
   self.ySelections.toArray().forEach(function (sel, i) {

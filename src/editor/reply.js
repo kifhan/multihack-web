@@ -1,9 +1,7 @@
-/* global Y, CodeMirror */
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
-var FileSystem = require('./../filesystem/filesystem')
-var Editor = require('./editor')
-var Util = require('./../filesystem/util')
+// var FileSystem = require('./../filesystem/filesystem')
+// var Util = require('./../filesystem/util')
 var User = require('./../auth/user')
 
 inherits(Reply, EventEmitter)
@@ -125,14 +123,14 @@ Reply.prototype.addReplyInput = function (line, level, order) {
     '<img src="' + User.user_picture + '" width="32px"></div>' +
     '<div class="reply-text-container" style="margin:0;padding-top:5px; vertical-align: top; display:inline-block;line-height:1.4;width: calc(100% - 60px);min-height:37px;">' +
     '<div class="reply-input-box" style="border:1px solid #aaa; background:#ffffff;">' +
-    '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" tabindex="-1">' +
-    '<span style="color:#888;">답글 달기...</span></div></div></div></div>'
+    '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" data-placeholder="답글 달기 ..." tabindex="-1">' +
+    '</div></div></div></div>'
     // 미리 작성한 html 템플레이트를 사용한다. https://thimbleprojects.org/mohawkduck/194618/
 
   function oarc () {
     var clickdom = document.getElementById('reply-input-' + reply_id)
     clickdom.addEventListener('keydown', self.onAddReply.bind(self, window.event, reply_id))
-    clickdom.addEventListener('focus', self.replyinputfocus.bind(window.event))
+    // clickdom.addEventListener('focus', self.replyinputfocus.bind(window.event))
     clickdom.focus()
   }
   self.timeouts.push(setTimeout(oarc, 100))
@@ -154,16 +152,16 @@ Reply.prototype.addReplyInput = function (line, level, order) {
   })
 }
 
-Reply.prototype.replyinputfocus = function (e) {
-  var self = this
-  // 댓글입력노드에 텍스트 커서가 붙으면 호출된다.
-  if (e.target.textContent != '답글 달기...') return
-  // 안내문구가 있을 경우 안내문구를 삭제한다.
-  e.target.innerHTML = ''
-  while (e.target.firstChild) {
-    e.target.removeChild(e.target.firstChild)
-  }
-}
+// Reply.prototype.replyinputfocus = function (e) {
+//   var self = this
+//   // 댓글입력노드에 텍스트 커서가 붙으면 호출된다.
+//   if (e.target.textContent != '답글 달기...') return
+//   // 안내문구가 있을 경우 안내문구를 삭제한다.
+//   e.target.innerHTML = ''
+//   while (e.target.firstChild) {
+//     e.target.removeChild(e.target.firstChild)
+//   }
+// }
 
 Reply.prototype.onAddReply = function (event, reply_id) {
   var self = this
@@ -248,7 +246,7 @@ console.log('widget is: ' + widget);
   console.log('reply inserted at line: ' + replyobj.line_num + ' order: ' + replyobj.order + ' of total: ' + rcount)
 
   if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
-    function oarcd () {
+    var oarcd = function () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
       clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
     }
@@ -345,7 +343,13 @@ Reply.prototype.removeReply = function (robj, dontsync) {
 
 Reply.prototype.setReplyPanel = function (cm) {
   var self = this
-  if (self.replyPanel) self.replyPanel.clear()
+  if (self.replyPanel) {
+    try {
+      self.replyPanel.clear()
+    } catch (error) {
+      // TODO: 오류 처리 코드를 넣는다.
+    }
+  }
   // 에디터에 댓글 다는 패널을 만든다.
   var PANEL_ELEMENT_CLASS = 'CM-buttonsPanel'
   var panelNode = document.createElement('div')
