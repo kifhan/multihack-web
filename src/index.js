@@ -344,17 +344,18 @@ Multihack.prototype._initRemote = function (cb) {
 // Create room id if it doesn't have one.
 // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키고 룸id가 있으면 해당 id로 네트워크를 실행시킨다.
   // Random starting room (to be changed) or from query
-  // if (!self.roomID && !self.embed) {
-  //   Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
+  if (!self.roomID && !self.embed) {
+    // Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
+    Interface.getRoom('rellat-otter-dev-v0.1', onRoom)
   // } else if (!self.embed) {
   //   Interface.getNickname(self.roomID, onRoom)
-  // } else {
-  //   Interface.embedMode()
+  } else {
+    // Interface.embedMode()
     onRoom({
       room: self.roomID || 'rellat-otter-dev-v0.1', // Math.random().toString(36).substr(2),
       nickname: User.user_id //lg('default_nickname')
     })
-  // }
+  }
 }
 
 module.exports = Multihack

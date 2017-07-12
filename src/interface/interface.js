@@ -164,7 +164,12 @@ Interface.prototype.getRoom = function (roomID, cb) {
   })
   roomModal.on('done', function (e) {
     roomModal.close()
-    self.getNickname(e.inputs[0].value, cb)
+    // self.getNickname(e.inputs[0].value, cb)
+
+    if (cb) cb({
+      room: e.inputs[0].value,
+      // nickname: e.inputs[0].value
+    })
   })
   roomModal.on('cancel', function () {
     roomModal.close()
