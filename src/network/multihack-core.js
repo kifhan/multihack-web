@@ -236,6 +236,8 @@ RemoteManager.prototype.createFile = function (filePath, content) {
       self.yfs.set(filePath + '.replydb', Y.Array)
       self.yfs.set(filePath, Y.Richtext)
       //insertChunked(self.yfs.get(filePath), 0, content)
+    } else {
+      self.yfs.set(filePath, content)      
     }
   })
 }

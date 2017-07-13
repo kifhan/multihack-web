@@ -42393,12 +42393,16 @@ function HtmlEditor(options) {
 
 HtmlEditor.prototype.open = function (filePath, remote) {
     var self = this
-    if(!self._remote) {
+    if(self._remote) {
         throw Error('already binded!')
     }
-    self._remote = remote
-    self.dom.innerHTML = self._remote.yfs.get(filePath)
-    self._workingFile = FileSystem.get(filePath)
+    if (remote) {
+        self._remote = remote
+        self.dom.innerHTML = self._remote.yfs.get(filePath)
+    }else {
+        self._remote = 'unsupported file'
+    }
+    self._workingFile = FileSystem.get(filePath)        
 }
 HtmlEditor.prototype.close = function () {
     var self = this
@@ -43333,13 +43337,13 @@ function Multihack (config) {
     } else if(util.findFileType(e.path) === 'quilljs') {
       view = new DocEditor()
       view.open(e.path,self._remote)
-    } else if(util.findFileType(e.path) === 'image') {
-      // view = new HtmlEditor()
-      // view.open(e.path,self._remote)
-      // TODO: image viewer 만든다.
-      return
+    // } else if(util.findFileType(e.path) === 'image') {
+    //   view = new HtmlEditor({content:''})
+    //   view.open(e.path,self._remote)
+    //   // TODO: image viewer 만든다.
     } else {
-      return
+      view = new HtmlEditor({content:'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'})
+      view.open(e.path,null)
     }
     
     Interface.workspacePane.addView(util.getFilename(e.path),view)
@@ -44926,6 +44930,8 @@ RemoteManager.prototype.createFile = function (filePath, content) {
       self.yfs.set(filePath + '.replydb', Y.Array)
       self.yfs.set(filePath, Y.Richtext)
       //insertChunked(self.yfs.get(filePath), 0, content)
+    } else {
+      self.yfs.set(filePath, content)      
     }
   })
 }

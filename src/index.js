@@ -49,13 +49,13 @@ function Multihack (config) {
     } else if(util.findFileType(e.path) === 'quilljs') {
       view = new DocEditor()
       view.open(e.path,self._remote)
-    } else if(util.findFileType(e.path) === 'image') {
-      // view = new HtmlEditor()
-      // view.open(e.path,self._remote)
-      // TODO: image viewer 만든다.
-      return
+    // } else if(util.findFileType(e.path) === 'image') {
+    //   view = new HtmlEditor({content:''})
+    //   view.open(e.path,self._remote)
+    //   // TODO: image viewer 만든다.
     } else {
-      return
+      view = new HtmlEditor({content:'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'})
+      view.open(e.path,null)
     }
     
     Interface.workspacePane.addView(util.getFilename(e.path),view)

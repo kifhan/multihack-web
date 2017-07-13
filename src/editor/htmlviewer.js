@@ -29,12 +29,16 @@ function HtmlEditor(options) {
 
 HtmlEditor.prototype.open = function (filePath, remote) {
     var self = this
-    if(!self._remote) {
+    if(self._remote) {
         throw Error('already binded!')
     }
-    self._remote = remote
-    self.dom.innerHTML = self._remote.yfs.get(filePath)
-    self._workingFile = FileSystem.get(filePath)
+    if (remote) {
+        self._remote = remote
+        self.dom.innerHTML = self._remote.yfs.get(filePath)
+    }else {
+        self._remote = 'unsupported file'
+    }
+    self._workingFile = FileSystem.get(filePath)        
 }
 HtmlEditor.prototype.close = function () {
     var self = this
