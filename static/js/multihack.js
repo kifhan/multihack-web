@@ -37536,7 +37536,46 @@ function extend (Y) {
         }).join('')
       }
       insert (pos, content) {
-        super.insert(pos, content.split(''))
+        var arr = content.split('')
+        for (var i = 0; i < arr.length; i++) {
+          if (/[\uD800-\uDFFF]/.test(arr[i])) {
+            // is surrogate pair
+            arr[i] = arr[i] + arr[i + 1]
+            arr[i + 1] = ''
+            i++
+          }
+        }
+        super.insert(pos, arr)
+      }
+      delete (pos, length) {
+        if (length == null) { length = 1 }
+        if (typeof length !== 'number') {
+          throw new Error('length must be a number!')
+        }
+        if (typeof pos !== 'number') {
+          throw new Error('pos must be a number!')
+        }
+        if (pos + length > this._content.length || pos < 0 || length < 0) {
+          throw new Error('The deletion range exceeds the range of the array!')
+        }
+        if (length === 0) {
+          return
+        }
+        // This is for the case that part of a surrogate pair is deleted
+        // we store surrogate pairs like this: [.., '🐇', '', ..] (string, code)
+        if (this._content.length > pos + length && this._content[pos + length].val === '' && this._content[pos + length - 1].val.length === 2) {
+          // case one. first part of the surrogate pair is deleted
+          let token = this._content[pos + length - 1].val[0]
+          super.delete(pos, length + 1)
+          super.insert(pos, [token])
+        } else if (pos > 0 && this._content[pos].val === '' && this._content[pos - 1].val.length === 2) {
+          // case two. second part of the surrogate pair is deleted
+          let token = this._content[pos - 1].val[1]
+          super.delete(pos - 1, length + 1)
+          super.insert(pos - 1, [token])
+        } else {
+          super.delete(pos, length)
+        }
       }
       unbindAll () {
         this.unbindTextareaAll()
@@ -37589,7 +37628,7 @@ function extend (Y) {
             //    var start = monacoInstance.model.getOffsetAt({column: event.range.startColumn, lineNumber: event.range.startLineNumber})
             // So we compute the offset using the _content of this type
             for (var i = 0, line = 1; line < event.range.startLineNumber; i++) {
-              if (self._content[i].val === event.eol) {
+              if (self._content[i].val === '\n') {
                 line++
               }
             }
@@ -44105,64 +44144,79 @@ var templates = require('./templates')
 
 inherits(Modal, EventEmitter)
 
-function Modal (name, data) {
-  var self = this
-  if (!(self instanceof Modal)) return new Modal()
+function Modal(name, data) {
+    var self = this
+    if (!(self instanceof Modal)) return new Modal()
 
-  self._html = mustache.render(templates[name], data)
-  self.el = document.getElementById('modal')
-  self.overlay = document.getElementById('overlay')
+    self._html = mustache.render(templates[name], data)
+    self.el = document.getElementById('modal')
+    self.overlay = document.getElementById('overlay')
 }
 
-Modal.prototype.open = function () {
-  var self = this
+Modal.prototype.open = function() {
+    var self = this
 
-  self.el.style.display = ''
-  self.overlay.style.display = ''
-  self.el.innerHTML = self._html
+    self.el.style.display = ''
+    self.overlay.style.display = ''
+    self.el.innerHTML = self._html
 
-  var inputs = self.el.querySelectorAll('input')
-  if (inputs[0] && inputs[0].type === 'text') inputs[0].select()
+    var inputs = self.el.querySelectorAll('input')
+    if (inputs[0] && inputs[0].type === 'text') inputs[0].select()
 
-  function done (e) {
-    e.inputs = inputs
-    self.emit('done', e)
-  }
-
-  function cancel () {
-    self.emit('cancel')
-  }
-
-  var go = Array.prototype.slice.call(self.el.querySelectorAll('.go-button'))
-  while (go[0]) {
-    if (go[0].tagName === 'BUTTON') {
-      go[0].addEventListener('click', done)
-    } else {
-      go[0].addEventListener('change', done)
+    function done(e) {
+        e.inputs = inputs
+        self.emit('done', e)
     }
-    go.shift()
-  }
 
-  var no = self.el.querySelector('.no-button')
-  if (no) {
-    if (no.tagName === 'BUTTON') {
-      no.addEventListener('click', cancel)
-    } else {
-      no.addEventListener('change', cancel)
+    function keyUp(e) {
+        e.preventDefault()
+        if (e.keyCode === 13) {
+            done(e)
+        }
     }
-  }
+
+    function cancel() {
+        self.emit('cancel')
+    }
+
+    var ip = Array.prototype.slice.call(self.el.querySelectorAll('.modal-input'))
+    while (ip[0]) {
+        if (ip[0].tagName === 'INPUT') {
+            ip[0].addEventListener('keyup', keyUp)
+            console.log('how many time it run?')
+        }
+        ip.shift()
+    }
+
+    var go = Array.prototype.slice.call(self.el.querySelectorAll('.go-button'))
+    while (go[0]) {
+        if (go[0].tagName === 'BUTTON') {
+            go[0].addEventListener('click', done)
+        } else {
+            go[0].addEventListener('change', done)
+        }
+        go.shift()
+    }
+
+    var no = self.el.querySelector('.no-button')
+    if (no) {
+        if (no.tagName === 'BUTTON') {
+            no.addEventListener('click', cancel)
+        } else {
+            no.addEventListener('change', cancel)
+        }
+    }
 }
 
-Modal.prototype.close = function () {
-  var self = this
+Modal.prototype.close = function() {
+    var self = this
 
-  self.el.style.display = 'none'
-  self.overlay.style.display = 'none'
-  self.el.innerHTML = ''
+    self.el.style.display = 'none'
+    self.overlay.style.display = 'none'
+    self.el.innerHTML = ''
 }
 
 module.exports = Modal
-
 },{"./templates":428,"events":325,"inherits":334,"mustache":342}],425:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
