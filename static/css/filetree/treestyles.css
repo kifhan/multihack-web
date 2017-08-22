@@ -59,7 +59,7 @@ ol.tree {
 
 .tree.panel li input:after{
     content:"";
-    padding: 20px;  
+    padding: 10px;  
     position: absolute;
     left: -10px;
     top: -10px;
