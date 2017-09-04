@@ -49,4 +49,10 @@ dict['network'] =
     '<div id="network-graph"></div>'+
     '<button class="no-button">'+lg('close')+'</button>'
 
+dict['rename'] = 
+    '<h1>{{title}}</h1>' +
+    '<input class="modal-input" placeholder="{{placeholder}}" value="{{default}}" type="text"><br>' +
+    '<button class="go-button">'+lg('ok')+'</button>'+
+    '<button class="no-button">'+lg('cancel')+'</button>'
+
 module.exports = dict

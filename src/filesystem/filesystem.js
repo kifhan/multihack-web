@@ -11,245 +11,284 @@ inherits(FileSystem, EventEmitter)
 
 var ignoredFilenames = ['__MACOSX', '.DS_Store']
 
-function FileSystem () {
-  var self = this
-  if (!(self instanceof FileSystem)) return new FileSystem()
+function FileSystem() {
+    var self = this
+    if (!(self instanceof FileSystem)) return new FileSystem()
 
-  self._tree = [
+    self._tree = [
     new Directory('')
   ]
 }
 
 // Loads a project
 FileSystem.prototype.loadProject = function (file, cb) {
-  var self = this
+    var self = this
 
-  // TODO: More load types
-  self.unzip(file, function () {
-    cb(self._tree[0].nodes)
-  })
+    // TODO: More load types
+    self.unzip(file, function () {
+        cb(self._tree[0].nodes)
+    })
 
-  // TODO: More input options
+    // TODO: More input options
 }
 
 // Saves the project
 FileSystem.prototype.saveProject = function (saveType, cb) {
-  var self = this
+    var self = this
 
-  // TODO: More save types
-  if (saveType === 'zip') {
-    try {
-      var zip = new JSZip()
-      util.zipTree(zip, self._tree[0].nodes)
+    // TODO: More save types
+    if (saveType === 'zip') {
+        try {
+            var zip = new JSZip()
+            util.zipTree(zip, self._tree[0].nodes)
 
-      zip.generateAsync({type: 'blob'}).then(function (content) {
-        window.saveAs(content, 'myProject.zip')
-        cb(true)
-      })
-    } catch (err) {
-      console.error(err)
-      cb(false)
+            zip.generateAsync({
+                type: 'blob'
+            }).then(function (content) {
+                window.saveAs(content, 'myProject.zip')
+                cb(true)
+            })
+        } catch (err) {
+            console.error(err)
+            cb(false)
+        }
     }
-  }
 }
 
 // Makes a directory, building paths
 FileSystem.prototype.mkdir = function (path) {
-  var self = this
-  
-  var parentPath = path.split('/')
-  parentPath.splice(-1, 1)
-  parentPath = parentPath.join('/')
+    var self = this
 
-  self._buildPath(parentPath)
-  if (self._getNode(path, self._getNode(parentPath).nodes)) return false
-  self._getNode(parentPath).nodes.push(new Directory(path))
-  
-  return true
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
+
+    self._buildPath(parentPath)
+    if (self._getNode(path, self._getNode(parentPath).nodes)) return false
+    self._getNode(parentPath).nodes.push(new Directory(path))
+
+    return true
 }
 
 // Makes an empty file (must set doc), building paths
 FileSystem.prototype.mkfile = function (path) {
-  var self = this
-  var parentPath = path.split('/')
-  parentPath.splice(-1, 1)
-  parentPath = parentPath.join('/')
+    var self = this
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
 
-  self._buildPath(parentPath)
-  if (self._getNode(path, self._getNode(parentPath).nodes)) return false
-  self._getNode(parentPath).nodes.push(new File(path))
-  
-  return true
+    self._buildPath(parentPath)
+    if (self._getNode(path, self._getNode(parentPath).nodes)) return false
+    self._getNode(parentPath).nodes.push(new File(path))
+
+    return true
 }
 
+FileSystem.prototype.rename = function (path, newName) {
+    var self = this
+    
+    var parentPath = path.split('/');
+    parentPath.splice(-1, 1);
+    parentPath = parentPath.join('/');
+    
+    // 상위 경로에 폴더들과 파일들이 다 존재하는지 검사
+    self._buildPath(parentPath);
+    
+    if (self._getNode(parentPath + '/' + newName, self._getNode(parentPath).nodes)) return false;
+    
+    var targetNode = self._getNode(path);
+    targetNode.name = newName;
+    targetNode.path = parentPath + '/' + newName;
+    
+    if(targetNode.isDir){
+        targetNode.nodes.forEach(function(node){
+            self.renameChildren(node, targetNode.path);
+        })
+    }
+    
+    return true;
+};
+
+FileSystem.prototype.renameChildren = function (node, parentPath) {
+    var self = this
+    
+    node.path = parentPath + '/' + node.name;
+    
+    if(node.isDir){
+        node.nodes.forEach(function(child){
+            self.renameChildren(child, node.path);
+        })
+    }
+};
+
 FileSystem.prototype.getContained = function (path) {
-  var self = this
-  
-  var dir = self.getFile(path)
-  if (!dir.isDir) return [dir]
-  
-  var contained = []
-  
-  dir.nodes.forEach(function (node) {
-    self.getContained(node.path).forEach(function (c) {
-      contained.push(c)
+    var self = this
+
+    var dir = self.getFile(path)
+    if (!dir.isDir) return [dir]
+
+    var contained = []
+
+    dir.nodes.forEach(function (node) {
+        self.getContained(node.path).forEach(function (c) {
+            contained.push(c)
+        })
     })
-  })
-  
-  return contained
+
+    return contained
 }
 
 // Ensures all directories have been built along a path
 FileSystem.prototype._buildPath = function (path) {
-  var self = this
+    var self = this
 
-  var split = path.split('/')
-  for (var i = 0; i <= split.length; i++) {
-    var check = split.slice(0, i).join('/')
-    if (!self._getNode(check)) {
-      self.mkdir(check)
+    var split = path.split('/')
+    for (var i = 0; i <= split.length; i++) {
+        var check = split.slice(0, i).join('/')
+        if (!self._getNode(check)) {
+            self.mkdir(check)
+        }
     }
-  }
 }
 
 // Recursive node search
 FileSystem.prototype._getNode = function (path, nodeList) {
-  var self = this
-  
-  nodeList = nodeList || self._tree
-  for (var i = 0; i < nodeList.length; i++) {
-    if (nodeList[i].path === path) {
-      return nodeList[i]
-    } else if (nodeList[i].isDir) {
-      var recur = self._getNode(path, nodeList[i].nodes)
-      if (recur) return recur
+    var self = this
+
+    nodeList = nodeList || self._tree
+    for (var i = 0; i < nodeList.length; i++) {
+        if (nodeList[i].path === path) {
+            return nodeList[i]
+        } else if (nodeList[i].isDir) {
+            var recur = self._getNode(path, nodeList[i].nodes)
+            if (recur) return recur
+        }
     }
-  }
-  return undefined
+    return undefined
 }
 
 // Checks if a file/directory exists at a path
 FileSystem.prototype.exists = function (path) {
-  var self = this
+    var self = this
 
-  var parentPath = path.split('/')
-  parentPath.splice(-1, 1)
-  parentPath = parentPath.join('/')
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
 
-  return !!self._getNode(path)
+    return !!self._getNode(path)
 }
 
 // Gets a node, building any broken paths
 FileSystem.prototype.get = function (path) {
-  var self = this
+    var self = this
 
-  var parentPath = path.split('/')
-  parentPath.splice(-1, 1)
-  parentPath = parentPath.join('/')
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
 
-  self._buildPath(parentPath)
-  return self._getNode(path)
+    self._buildPath(parentPath)
+    return self._getNode(path)
 }
 
 // Gets an existing file, or creates one if none exists
 FileSystem.prototype.getFile = function (path) {
-  var self = this
-  
-  var parentPath = path.split('/')
-  parentPath.splice(-1,1)
-  parentPath = parentPath.join('/')
-  
-  self._buildPath(parentPath)
-  return self._getNode(path) || (function () {
-    self.mkfile(path)
-    return self._getNode(path)
-  }())
+    var self = this
+
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
+
+    self._buildPath(parentPath)
+    return self._getNode(path) || (function () {
+        self.mkfile(path)
+        return self._getNode(path)
+    }())
 }
 
 // Deletes a file/directory on a path
 FileSystem.prototype.delete = function (path) {
-  var self = this
-  var parentPath = path.split('/')
-  parentPath.splice(-1, 1)
-  parentPath = parentPath.join('/')
-  self._getNode(parentPath).nodes = self._getNode(parentPath).nodes.filter(function (e) {
-    if (e.path === path) {
-      return false
-    }
-    return true
-  })
+    var self = this
+    var parentPath = path.split('/')
+    parentPath.splice(-1, 1)
+    parentPath = parentPath.join('/')
+    self._getNode(parentPath).nodes = self._getNode(parentPath).nodes.filter(function (e) {
+        if (e.path === path) {
+            return false
+        }
+        return true
+    })
 }
 
 // Returns the useable part of the tree
 FileSystem.prototype.getTree = function () {
-  var self = this
-
-  return self._tree[0].nodes
+    var self = this
+    
+    return self._tree[0].nodes
 }
 
 // Return array of all files and folders
 FileSystem.prototype.getAllFiles = function () {
-  var self = this
+    var self = this
 
-  var all = []
+    var all = []
 
-  function walk (dir) {
-    for (var i = 0; i < dir.nodes.length; i++) {
-      if (dir.nodes[i].isDir) {
-        walk(dir.nodes[i])
-      }
-      all.push(dir.nodes[i])
+    function walk(dir) {
+        for (var i = 0; i < dir.nodes.length; i++) {
+            if (dir.nodes[i].isDir) {
+                walk(dir.nodes[i])
+            }
+            all.push(dir.nodes[i])
+        }
     }
-  }
 
-  walk(self._tree[0])
+    walk(self._tree[0])
 
-  return all
+    return all
 }
 
 // Loads a project from a zip file
 FileSystem.prototype.unzip = function (file, cb) {
-  var self = this
-  
-  JSZip.loadAsync(file).then(function (zip) {
-    var awaiting = Object.keys(zip.files).length
-    zip.forEach(function (relativePath, zipEntry) {    
-      if (relativePath[0] !== '/') relativePath = '/'+relativePath
+    var self = this
 
-      // Filter out ignored files
-      for (var i = 0; i < ignoredFilenames.length; i++) {
-        if (relativePath.indexOf(ignoredFilenames[i]) !== -1) {
-          if (--awaiting <= 0) cb()
-          return
-        }
-      }
+    JSZip.loadAsync(file).then(function (zip) {
+        var awaiting = Object.keys(zip.files).length
+        zip.forEach(function (relativePath, zipEntry) {
+            if (relativePath[0] !== '/') relativePath = '/' + relativePath
 
-      relativePath = relativePath.split('/')
-      relativePath.splice(0, 1)
-      relativePath = relativePath.join('/')
-      relativePath = '/' + relativePath
+            // Filter out ignored files
+            for (var i = 0; i < ignoredFilenames.length; i++) {
+                if (relativePath.indexOf(ignoredFilenames[i]) !== -1) {
+                    if (--awaiting <= 0) cb()
+                    return
+                }
+            }
 
-      if (zipEntry.dir) {
-        relativePath = relativePath.slice(0, -1)
-      }
+            relativePath = relativePath.split('/')
+            relativePath.splice(0, 1)
+            relativePath = relativePath.join('/')
+            relativePath = '/' + relativePath
 
-      var parentPath = relativePath.split('/')
-      parentPath.splice(-1, 1)
-      parentPath = parentPath.join('/')
+            if (zipEntry.dir) {
+                relativePath = relativePath.slice(0, -1)
+            }
 
-      if (zipEntry.dir) {
-        self.mkdir(relativePath)
-        if (--awaiting <= 0) cb()
-      } else {
-        self.mkfile(relativePath)
-        zipEntry.async('string').then(function (content) {
-          self.get(relativePath).cmdoc = new CodeMirror.Doc(content, util.pathToCodeMode(relativePath))
-          self.emit('unzipFile', self.get(relativePath))
-          if (--awaiting <= 0) cb()
+            var parentPath = relativePath.split('/')
+            parentPath.splice(-1, 1)
+            parentPath = parentPath.join('/')
+
+            if (zipEntry.dir) {
+                self.mkdir(relativePath)
+                if (--awaiting <= 0) cb()
+            } else {
+                self.mkfile(relativePath)
+                zipEntry.async('string').then(function (content) {
+                    self.get(relativePath).cmdoc = new CodeMirror.Doc(content, util.pathToCodeMode(relativePath))
+                    self.emit('unzipFile', self.get(relativePath))
+                    if (--awaiting <= 0) cb()
+                })
+            }
         })
-      }
     })
-  })
 }
 
 module.exports = new FileSystem()

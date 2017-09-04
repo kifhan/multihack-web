@@ -268,15 +268,28 @@ function chunkString (str, size) {
   return chunks
 }
 
-RemoteManager.prototype.replaceFile = function (oldPath, newPath) {
+RemoteManager.prototype.renameDir = function (oldPath, newPath) {
+  var self = this
+  self.yfs.keys().forEach(function(key) {
+      var tempkey = key.slice(0,oldPath.length)
+      console.log(oldPath + ' : '+ tempkey);
+      if(oldPath == tempkey) {
+          self.renameFile(oldPath, newPath)
+      }
+  })
+}
+
+RemoteManager.prototype.renameFile = function (oldPath, newPath) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(newPath, self.yfs.get(oldPath))
-    self.yfs.delete(oldPath)
-    if(self.yfs.get(oldPath + '.replydb')) {
-      self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
-      self.yfs.delete(oldPath + '.replydb')   
-    }  
+    self.mutualExcluse(oldPath, function () {
+        self.yfs.set(newPath, self.yfs.get(oldPath))
+        self.yfs.delete(oldPath)
+        if(self.yfs.get(oldPath + '.replydb')) {
+          self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
+          self.yfs.delete(oldPath + '.replydb')   
+        }  
+    })
   })
 }
 RemoteManager.prototype.deleteFile = function (filePath) {
