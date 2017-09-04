@@ -58,10 +58,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kifhan/multihack-web.git"
+    "url": "git+https://github.com/rellat/rellat-web.git"
   },
   "bugs": {
-    "url": "https://github.com/kifhan/multihack-web/issues"
+    "url": "https://github.com/rellat/rellat-web/issues"
   },
-  "homepage": "https://github.com/kifhan/multihack-web#readme"
+  "homepage": "https://github.com/rellat/rellat-web#readme"
 }
