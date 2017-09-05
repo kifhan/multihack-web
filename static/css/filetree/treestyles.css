@@ -2,7 +2,7 @@
 
 ol.tree {
     padding: 0 0 0 30px;
-    width: 300px;
+    /*width: 300px;*/
 }
 
 .beside {
@@ -27,6 +27,7 @@ ol.tree {
     margin-left: -15px;
     list-style: none;
     cursor: pointer;
+    margin-bottom: 5px;
 }
 
 .tree.panel li.file {
@@ -59,11 +60,11 @@ ol.tree {
 
 .tree.panel li input:after{
     content:"";
-    padding: 10px;  
+    padding: 10px;
     position: absolute;
     left: -10px;
     top: -10px;
-} 
+}
 
 .tree.panel li input ~ ol {
     background: url(toggle-small-expand.png) 40px 0 no-repeat;

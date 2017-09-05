@@ -21,11 +21,11 @@ function TreeView() {
 
 TreeView.prototype.render = function (nodeList, parentElement) {
     var self = this;
-    
+
     parentElement = parentElement || document.querySelector('#tree')
 
     while (parentElement.firstChild) {
-        
+
         parentElement.removeChild(parentElement.firstChild);
     }
 
@@ -37,22 +37,22 @@ TreeView.prototype.render = function (nodeList, parentElement) {
 
 TreeView.prototype.renameDir = function (nodeList) {
     var self = this;
-    
+
    self.rerender(nodeList);
 };
 
 TreeView.prototype.renameChildren = function (parentElement,file) {
     var self = this;
-    
+
     self.add(parentElement,file);
-    
+
     if(file.isDir){
         file.nodes.forEach(function(ele){
             var dirElement = document.getElementById(file.path);
             self.renameChildren(dirElement.parentElement,ele);
         })
     }
-    
+
 }
 
 
@@ -137,9 +137,11 @@ TreeView.prototype.addFile = function (parentElement, file) {
 
     self.dropdown.makeDropdownButton(a);
     self.dropdown.addMenu(a.id, 'Rename', function (e) {
+        e.stopPropagation();
         console.log('하하 되지롱1~');
     });
     self.dropdown.addMenu(a.id, 'Delete', function (e) {
+        e.stopPropagation();
         self.emit('deleteFile', {
             target: e.target,
             path: file.path,
@@ -170,30 +172,17 @@ TreeView.prototype.addDir = function (parentElement, file) {
     var ol = document.createElement('ol')
     self.render(file.nodes, ol)
 
-    var plus = document.createElement('span')
-    plus.className = 'beside plus'
-    plus.innerHTML = '&#43;'
-    plus.addEventListener('click', function (e) {
+    self.dropdown.makeDropdownButton(label);
+    self.dropdown.addMenu(label.id, 'add', function (e) {
+        e.stopPropagation();
         self.emit('add', {
             target: null,
             path: file.path,
             parentElement: ol
         })
-    })
-
-    var del = document.createElement('span')
-    del.className = 'beside delete'
-    del.innerHTML = '&#9003;'
-    del.addEventListener('click', function (e) {
-        self.emit('removeDir', {
-            target: e.target,
-            path: file.path,
-            parentElement: parentElement
-        })
-    })
-    
-    self.dropdown.makeDropdownButton(label);
+    });
     self.dropdown.addMenu(label.id, 'Rename', function (e) {
+        e.stopPropagation();
         self.emit('renameDir', {
             target: e.target,
             path: file.path,
@@ -201,6 +190,7 @@ TreeView.prototype.addDir = function (parentElement, file) {
         });
     });
     self.dropdown.addMenu(label.id, 'Delete', function (e) {
+        e.stopPropagation();
         self.emit('removeDir', {
             target: e.target,
             path: file.path,
@@ -210,8 +200,6 @@ TreeView.prototype.addDir = function (parentElement, file) {
 
     el.appendChild(label)
     el.appendChild(input)
-    el.appendChild(plus)
-    el.appendChild(del)
     el.appendChild(ol)
     parentElement.appendChild(el)
 }

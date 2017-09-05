@@ -4,9 +4,9 @@
 .dropdown {
     display: inline-block;
     position: relative;
+    float: right;
+    margin-right: 5px;
 }
-
-
 
 .dd-button {
     display: inline-block;
@@ -52,6 +52,7 @@
     list-style-type: none;
     z-index: 999998;
     color: black;
+    margin-left: -80px;
 }
 
 .dd-menu li {

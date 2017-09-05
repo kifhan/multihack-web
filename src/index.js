@@ -1,6 +1,6 @@
 // y-js browser debug state
 
-// localStorage.debug = 'y:*,MH:*'
+localStorage.debug = 'y:*,MH:*'
 // Turn on debug log
 var debug = require('debug')('MH:index')
 
@@ -155,8 +155,8 @@ function Multihack(config) {
         // 이벤트가 발생 한 file의 path로 fileSystem에서 file을 받아온다.
         var dir = FileSystem.get(e.path);
         var oldPath = dir.path;
-        
-        
+
+
             console.log('before');
             console.log(JSON.stringify(dir.path));
         // get new file/folder name

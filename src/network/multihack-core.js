@@ -4,6 +4,7 @@ var Y = require('yjs')
 require('y-memory')(Y)
 require('y-array')(Y)
 require('y-map')(Y)
+// require('../../../../y-map')(Y)
 // require('./websockets-client')(Y)
 require('./y-multihack')(Y)
 require('y-text')(Y)
@@ -104,11 +105,13 @@ function RemoteManager (opts) {
 
     debug('load yfs: '+JSON.stringify(self.yfs.keys()))
     self.yfs.keys().forEach(function(path) {
-      self.fileoperation('add', path, self.yfs.get(path))      
+      self.fileoperation('add', path, self.yfs.get(path))
     })
 
     self.yfs.observe(function (event) {
-      self.fileoperation(event.type, event.name, event.value)
+        self.mutualExcluse(event.name, function () {
+          self.fileoperation(event.type, event.name, event.value)
+      })
     })
 
     self.ySelections.observe(function (event) {
@@ -190,9 +193,9 @@ RemoteManager.prototype.offObserver = function (filePath) {
 }
 RemoteManager.prototype.getContent = function (filePath) {
   var self = this
-  if(util.findFileType(filePath) === 'text') 
+  if(util.findFileType(filePath) === 'text')
     return self.yfs.get(filePath).toString()
-  else if(util.findFileType(filePath) === 'quilljs') 
+  else if(util.findFileType(filePath) === 'quilljs')
     return self.yfs.get(filePath).toDelta()
   else return self.yfs.get(filePath)
 }
@@ -225,7 +228,7 @@ RemoteManager.prototype.createFile = function (filePath, content) {
   var self = this
   self.onceReady(function () {
     content = content || ''
-    var filetype = util.findFileType(filePath)    
+    var filetype = util.findFileType(filePath)
     if (filetype === 'image') {
       self.yfs.set(filePath, content)
     } else if (filetype === 'text') {
@@ -237,7 +240,7 @@ RemoteManager.prototype.createFile = function (filePath, content) {
       self.yfs.set(filePath, Y.Richtext)
       //insertChunked(self.yfs.get(filePath), 0, content)
     } else {
-      self.yfs.set(filePath, content)      
+      self.yfs.set(filePath, content)
     }
   })
 }
@@ -274,7 +277,8 @@ RemoteManager.prototype.renameDir = function (oldPath, newPath) {
       var tempkey = key.slice(0,oldPath.length)
       console.log(oldPath + ' : '+ tempkey);
       if(oldPath == tempkey) {
-          self.renameFile(oldPath, newPath)
+          var tempnewPath = key.slice(oldPath.length)
+          self.renameFile(key, newPath + tempnewPath)
       }
   })
 }
@@ -283,12 +287,17 @@ RemoteManager.prototype.renameFile = function (oldPath, newPath) {
   var self = this
   self.onceReady(function () {
     self.mutualExcluse(oldPath, function () {
-        self.yfs.set(newPath, self.yfs.get(oldPath))
-        self.yfs.delete(oldPath)
-        if(self.yfs.get(oldPath + '.replydb')) {
-          self.yfs.set(newPath + '.replydb', self.yfs.get(oldPath + '.replydb'))
-          self.yfs.delete(oldPath + '.replydb')   
-        }  
+      self.mutualExcluse(newPath, function () {
+            var tempobj = self.yfs.get(oldPath)
+            if(!tempobj) return
+
+            self.yfs.set(newPath, tempobj)
+            if(self.yfs.get(oldPath + '.replydb')) {
+              self.renameFile(oldPath + '.replydb', newPath + '.replydb')
+            }
+            self.yfs.delete(oldPath)
+
+        })
     })
   })
 }

@@ -1,14 +1,14 @@
 function DropdownMenu() {
     var self = this;
     if (!(this instanceof DropdownMenu)) return new DropdownMenu();
-    
+
     self.activeDropdown = {};
     self.dropdownButtons = {};
     self.tail = '-dropDown';
-    
+
     // 이건 한번만 해주면 되는 일이라 여기로 빼 주었다.
     window.onclick = function (event) {
-        if (!event.target.classList.contains('dd-button')) {
+        if (!event.target.classList.contains('dd-button') && self.activeDropdown.element) {
             self.activeDropdown.element.style.display = 'none';
         }
     };
@@ -24,7 +24,7 @@ DropdownMenu.prototype.makeDropdownButton = function (parentElement) {
 
 DropdownMenu.prototype.setInitialElements = function (parentElement) {
     var self = this;
-    
+
     var topDiv = document.createElement('div');
     topDiv.className = 'dropdown';
     topDiv.id = parentElement.id + self.tail;
@@ -39,7 +39,7 @@ DropdownMenu.prototype.setInitialElements = function (parentElement) {
     topDiv.appendChild(ul);
     parentElement.appendChild(topDiv);
     self.setEventListener(topDiv);
-    
+
     return topDiv;
 };
 
@@ -49,11 +49,11 @@ DropdownMenu.prototype.setEventListener = function (element) {
     if (!element.id.includes('-dropDown')) return;
     element.addEventListener('click', function (event) {
         // 다른 드롭 다운 버튼을 누르면 원래 열려 있던 것이 없어진다.
-
+        event.stopPropagation();
         if (self.activeDropdown.id && self.activeDropdown.id !== element.id) {
             self.activeDropdown.element.style.display = 'none';
         }
-        
+
         self.activeDropdown.id = element.id;
         self.activeDropdown.element = element.children[1];
         element.children[1].style.display = 'block';
