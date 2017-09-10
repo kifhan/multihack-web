@@ -9,26 +9,26 @@ inherits(CodeEditor, EventEmitter)
 function CodeEditor (options) {
   var self = this
   if (!(self instanceof CodeEditor)) return new CodeEditor(options)
-  
+
   options = options || {}
   self.title = options.title || 'no name'
-  self.container = options.container || document.createElement("div")
+  self.container = options.container || document.createElement('div')
   self.container.className = 'editor-view'
   self.bindedTab = null
 
   var textarea = options.textarea
-  if(!textarea) {
-    textarea = document.createElement("div")
-    textarea.className = "view code-editor"
+  if (!textarea) {
+    textarea = document.createElement('div')
+    textarea.className = 'view code-editor'
     self.container.appendChild(textarea)
   }
   self.textarea = textarea
 
-  self._cm = CodeMirror(function(elt) {
-      // elt.className += " view code-editor"
-      self.textarea.parentNode.replaceChild(elt, self.textarea);
-      self.textarea = elt
-    }, {
+  self._cm = CodeMirror(function (elt) {
+    // elt.className += " view code-editor"
+    self.textarea.parentNode.replaceChild(elt, self.textarea)
+    self.textarea = elt
+  }, {
     mode: {name: 'javascript', globalVars: true}, // syntax mode will change when file opens
     extraKeys: {'tab': 'autocomplete'},
     lineNumbers: true,
@@ -41,6 +41,7 @@ function CodeEditor (options) {
     autoCloseBrackets: true,
     matchTags: {bothTags: true},
     autoCloseTags: true,
+    viewportMargin: 100,
     autoResize: true
   })
 
@@ -54,46 +55,30 @@ function CodeEditor (options) {
   self._workingFile = null
 
   var tokens = {}
-  self.mutualExcluse = function (key, f) { if (!tokens[key]) { tokens[key] = true; try { f(); } catch (e) { delete tokens[key]; throw new Error(e); } delete tokens[key]; } }
+  self.mutualExcluse = function (key, f) { if (!tokens[key]) { tokens[key] = true; try { f() } catch (e) { delete tokens[key]; throw new Error(e) } delete tokens[key] } }
 
-  self._onchangebind = self._onchange.bind(self)
   self._onSelectionChangebind = self._onSelectionChange.bind(self)
-  self._cm.on('change', self._onchangebind)
   self._cm.on('beforeSelectionChange', self._onSelectionChangebind)
 
   self._remoteCarets = []
   self._lastSelections = []
   self._remote = null
 
-  self._resizetimeout = function () { 
-    if(self.container.offsetHeight && self._cm.getWrapperElement().offsetHeight != (self.container.offsetHeight - 43 + 1)) {
+  self._resizetimeout = function () {
+    if (self.container.offsetHeight && self._cm.getWrapperElement().offsetHeight !== (self.container.offsetHeight - 43 + 1)) {
       self._cm.getWrapperElement().style.height = (self.container.offsetHeight - 43) + 'px'
-      // self._cm.setSize(self.container.offsetWidth, self.container.offsetHeight - 43)
-      // self._cm.refresh()
-      console.log('size '+self.container.offsetHeight)
-    } 
+      // console.log('size ' + self.container.offsetHeight)
+      self._cm.refresh()
+    }
   }
-  setInterval(self._resizetimeout, 500);
-}
-
-CodeEditor.prototype._onchange = function (cm, change) {
-  var self = this
-  self.mutualExcluse('change', function() {
-    change.start = self._cm.indexFromPos(change.from)
-    // self.emit('change', {
-    //   filePath: self._workingFile.path,
-    //   change: change
-    // })
-    self._remote.changeFile(self._workingFile.path, change)
-  })  
-  
+  setInterval(self._resizetimeout, 100)
 }
 
 CodeEditor.prototype._onSelectionChange = function (cm, change) {
   var self = this
-  
+
   var ranges = change.ranges.map(self._putHeadBeforeAnchor)
-  
+
   // self.emit('selection', {
   //   filePath: self._workingFile.path,
   //   change: {
@@ -108,14 +93,13 @@ CodeEditor.prototype._onSelectionChange = function (cm, change) {
       ranges: ranges
     }
   })
-
 }
 
 CodeEditor.prototype.highlight = function (selections) {
   var self = this
-  
+
   self._lastSelections = selections
-  
+
   // Timeout so selections are always applied after changes
   window.setTimeout(function () {
     if (!self._workingFile) return
@@ -149,8 +133,8 @@ CodeEditor.prototype._insertRemoteCaret = function (range) {
   var caretEl = document.createElement('div')
 
   caretEl.classList.add('remoteCaret')
-  caretEl.style.height = self._cm.defaultTextHeight() + "px"
-  caretEl.style.marginTop = "-" + self._cm.defaultTextHeight() + "px"
+  caretEl.style.height = self._cm.defaultTextHeight() + 'px'
+  caretEl.style.marginTop = '-' + self._cm.defaultTextHeight() + 'px'
 
   self._remoteCarets.push(caretEl)
 
@@ -158,7 +142,6 @@ CodeEditor.prototype._insertRemoteCaret = function (range) {
 }
 
 CodeEditor.prototype._removeRemoteCaret = function (caret) {
-  var self = this
   caret.parentNode.removeChild(caret)
 }
 
@@ -166,31 +149,31 @@ CodeEditor.prototype._removeRemoteCaret = function (caret) {
 CodeEditor.prototype.change = function (filePath, change) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) {
-    self.mutualExcluse('change',function() {
-      self._cm.replaceRange(change.text, change.to, change.from)      
+    self.mutualExcluse('change', function () {
+      self._cm.replaceRange(change.text, change.to, change.from)
     })
   }
 }
 
 CodeEditor.prototype.posFromIndex = function (index) {
   var self = this
-  
+
   return self._cm.posFromIndex(index)
 }
 
-CodeEditor.prototype.open = function (filePath, remote) {
+CodeEditor.prototype.open = function (filePath, remote, reply) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) return // Skip, if the file is already opened
-  self._workingFile = FileSystem.get(filePath)
+  self._workingFile = FileSystem.getFileByPath(filePath)
   self._remote = remote
-  // self.bindedTab.rename(self._workingFile.name)
+
+  self._remote.bindCodeMirror(self._workingFile.contentID, self._cm, self._workingFile.replydbID, reply)
 
   // document.querySelector('.editor-wrapper').style.display = ''
-  self._cm.swapDoc(self._workingFile.cmdoc)
   self.highlight(self._lastSelections)
-  setTimeout(function() {
+  setTimeout(function () {
     self._cm.execCommand('goDocStart')
-  },100)
+  }, 100)
 
   self._selectionevent = function (selections) {
     // sync text cursor of other user.
@@ -198,30 +181,23 @@ CodeEditor.prototype.open = function (filePath, remote) {
     self.highlight(selections)
   }
   self._remote.on('changeSelection', self._selectionevent)
-  self._changetextevent = function (data) {
-    // sync text of other user on Editor.
-    // 협업 중인 다른 사용자가 작업한 내용을 현재 사용자의 문서 에디터에 반영한다.
-    self.change(data.filePath, data.change)
-  }
-  self._remote.on('changeFile', self._changetextevent)
 }
 
 CodeEditor.prototype.close = function () {
   var self = this
   self._workingFile = null
 
+  self._remote.unbindCodeMirror(self._workingFile.contentID)
+
   self._cm.off('keyup', self._keyup)
-  self._cm.off('change', self._onchangebind)
   self._cm.off('beforeSelectionChange', self._onSelectionChangebind)
-  self._cm.swapDoc(new CodeMirror.Doc(''))
 
   self._remote.removeListener('changeSelection', self._selectionevent)
-  self._remote.removeListener('changeFile', self._changetextevent)
-  
-  self.container.childNodes.forEach(function(element) {
+
+  self.container.childNodes.forEach(function (element) {
     self.container.removeChild(element)
   })
-    //TODO: destroy
+    // TODO: destroy
 }
 
 CodeEditor.prototype.getWorkingFile = function () {

@@ -42749,26 +42749,26 @@ inherits(CodeEditor, EventEmitter)
 function CodeEditor (options) {
   var self = this
   if (!(self instanceof CodeEditor)) return new CodeEditor(options)
-  
+
   options = options || {}
   self.title = options.title || 'no name'
-  self.container = options.container || document.createElement("div")
+  self.container = options.container || document.createElement('div')
   self.container.className = 'editor-view'
   self.bindedTab = null
 
   var textarea = options.textarea
-  if(!textarea) {
-    textarea = document.createElement("div")
-    textarea.className = "view code-editor"
+  if (!textarea) {
+    textarea = document.createElement('div')
+    textarea.className = 'view code-editor'
     self.container.appendChild(textarea)
   }
   self.textarea = textarea
 
-  self._cm = CodeMirror(function(elt) {
-      // elt.className += " view code-editor"
-      self.textarea.parentNode.replaceChild(elt, self.textarea);
-      self.textarea = elt
-    }, {
+  self._cm = CodeMirror(function (elt) {
+    // elt.className += " view code-editor"
+    self.textarea.parentNode.replaceChild(elt, self.textarea)
+    self.textarea = elt
+  }, {
     mode: {name: 'javascript', globalVars: true}, // syntax mode will change when file opens
     extraKeys: {'tab': 'autocomplete'},
     lineNumbers: true,
@@ -42781,6 +42781,7 @@ function CodeEditor (options) {
     autoCloseBrackets: true,
     matchTags: {bothTags: true},
     autoCloseTags: true,
+    viewportMargin: 100,
     autoResize: true
   })
 
@@ -42794,46 +42795,30 @@ function CodeEditor (options) {
   self._workingFile = null
 
   var tokens = {}
-  self.mutualExcluse = function (key, f) { if (!tokens[key]) { tokens[key] = true; try { f(); } catch (e) { delete tokens[key]; throw new Error(e); } delete tokens[key]; } }
+  self.mutualExcluse = function (key, f) { if (!tokens[key]) { tokens[key] = true; try { f() } catch (e) { delete tokens[key]; throw new Error(e) } delete tokens[key] } }
 
-  self._onchangebind = self._onchange.bind(self)
   self._onSelectionChangebind = self._onSelectionChange.bind(self)
-  self._cm.on('change', self._onchangebind)
   self._cm.on('beforeSelectionChange', self._onSelectionChangebind)
 
   self._remoteCarets = []
   self._lastSelections = []
   self._remote = null
 
-  self._resizetimeout = function () { 
-    if(self.container.offsetHeight && self._cm.getWrapperElement().offsetHeight != (self.container.offsetHeight - 43 + 1)) {
+  self._resizetimeout = function () {
+    if (self.container.offsetHeight && self._cm.getWrapperElement().offsetHeight !== (self.container.offsetHeight - 43 + 1)) {
       self._cm.getWrapperElement().style.height = (self.container.offsetHeight - 43) + 'px'
-      // self._cm.setSize(self.container.offsetWidth, self.container.offsetHeight - 43)
-      // self._cm.refresh()
-      console.log('size '+self.container.offsetHeight)
-    } 
+      // console.log('size ' + self.container.offsetHeight)
+      self._cm.refresh()
+    }
   }
-  setInterval(self._resizetimeout, 500);
-}
-
-CodeEditor.prototype._onchange = function (cm, change) {
-  var self = this
-  self.mutualExcluse('change', function() {
-    change.start = self._cm.indexFromPos(change.from)
-    // self.emit('change', {
-    //   filePath: self._workingFile.path,
-    //   change: change
-    // })
-    self._remote.changeFile(self._workingFile.path, change)
-  })  
-  
+  setInterval(self._resizetimeout, 100)
 }
 
 CodeEditor.prototype._onSelectionChange = function (cm, change) {
   var self = this
-  
+
   var ranges = change.ranges.map(self._putHeadBeforeAnchor)
-  
+
   // self.emit('selection', {
   //   filePath: self._workingFile.path,
   //   change: {
@@ -42848,14 +42833,13 @@ CodeEditor.prototype._onSelectionChange = function (cm, change) {
       ranges: ranges
     }
   })
-
 }
 
 CodeEditor.prototype.highlight = function (selections) {
   var self = this
-  
+
   self._lastSelections = selections
-  
+
   // Timeout so selections are always applied after changes
   window.setTimeout(function () {
     if (!self._workingFile) return
@@ -42889,8 +42873,8 @@ CodeEditor.prototype._insertRemoteCaret = function (range) {
   var caretEl = document.createElement('div')
 
   caretEl.classList.add('remoteCaret')
-  caretEl.style.height = self._cm.defaultTextHeight() + "px"
-  caretEl.style.marginTop = "-" + self._cm.defaultTextHeight() + "px"
+  caretEl.style.height = self._cm.defaultTextHeight() + 'px'
+  caretEl.style.marginTop = '-' + self._cm.defaultTextHeight() + 'px'
 
   self._remoteCarets.push(caretEl)
 
@@ -42898,7 +42882,6 @@ CodeEditor.prototype._insertRemoteCaret = function (range) {
 }
 
 CodeEditor.prototype._removeRemoteCaret = function (caret) {
-  var self = this
   caret.parentNode.removeChild(caret)
 }
 
@@ -42906,31 +42889,31 @@ CodeEditor.prototype._removeRemoteCaret = function (caret) {
 CodeEditor.prototype.change = function (filePath, change) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) {
-    self.mutualExcluse('change',function() {
-      self._cm.replaceRange(change.text, change.to, change.from)      
+    self.mutualExcluse('change', function () {
+      self._cm.replaceRange(change.text, change.to, change.from)
     })
   }
 }
 
 CodeEditor.prototype.posFromIndex = function (index) {
   var self = this
-  
+
   return self._cm.posFromIndex(index)
 }
 
-CodeEditor.prototype.open = function (filePath, remote) {
+CodeEditor.prototype.open = function (filePath, remote, reply) {
   var self = this
   if (self._workingFile && filePath === self._workingFile.path) return // Skip, if the file is already opened
-  self._workingFile = FileSystem.get(filePath)
+  self._workingFile = FileSystem.getFileByPath(filePath)
   self._remote = remote
-  // self.bindedTab.rename(self._workingFile.name)
+
+  self._remote.bindCodeMirror(self._workingFile.contentID, self._cm, self._workingFile.replydbID, reply)
 
   // document.querySelector('.editor-wrapper').style.display = ''
-  self._cm.swapDoc(self._workingFile.cmdoc)
   self.highlight(self._lastSelections)
-  setTimeout(function() {
+  setTimeout(function () {
     self._cm.execCommand('goDocStart')
-  },100)
+  }, 100)
 
   self._selectionevent = function (selections) {
     // sync text cursor of other user.
@@ -42938,30 +42921,23 @@ CodeEditor.prototype.open = function (filePath, remote) {
     self.highlight(selections)
   }
   self._remote.on('changeSelection', self._selectionevent)
-  self._changetextevent = function (data) {
-    // sync text of other user on Editor.
-    // 협업 중인 다른 사용자가 작업한 내용을 현재 사용자의 문서 에디터에 반영한다.
-    self.change(data.filePath, data.change)
-  }
-  self._remote.on('changeFile', self._changetextevent)
 }
 
 CodeEditor.prototype.close = function () {
   var self = this
   self._workingFile = null
 
+  self._remote.unbindCodeMirror(self._workingFile.contentID)
+
   self._cm.off('keyup', self._keyup)
-  self._cm.off('change', self._onchangebind)
   self._cm.off('beforeSelectionChange', self._onSelectionChangebind)
-  self._cm.swapDoc(new CodeMirror.Doc(''))
 
   self._remote.removeListener('changeSelection', self._selectionevent)
-  self._remote.removeListener('changeFile', self._changetextevent)
-  
-  self.container.childNodes.forEach(function(element) {
+
+  self.container.childNodes.forEach(function (element) {
     self.container.removeChild(element)
   })
-    //TODO: destroy
+    // TODO: destroy
 }
 
 CodeEditor.prototype.getWorkingFile = function () {
@@ -43042,6 +43018,7 @@ var ExcludedIntelliSenseTriggerKeys = {
   '220': 'backslash',
   '222': 'quote'
 }
+
 },{"./../filesystem/filesystem":447,"events":354,"inherits":363}],442:[function(require,module,exports){
 /* globals Quill */
 
@@ -43051,60 +43028,57 @@ var FileSystem = require('./../filesystem/filesystem')
 
 inherits(DocEditor, EventEmitter)
 
-function DocEditor(options) {
-    var self = this
-    if (!(self instanceof DocEditor)) return new DocEditor(options)
+function DocEditor (options) {
+  var self = this
+  if (!(self instanceof DocEditor)) return new DocEditor(options)
 
   options = options || {}
   self.title = options.title || 'no name'
-  self.container = options.container || document.createElement("div")
+  self.container = options.container || document.createElement('div')
   self.container.className = 'editor-view'
   self.bindedTab = null
 
-    var textarea = options.textarea
-    if (!textarea) {
-        textarea = document.createElement("div")
-        textarea.className = "view doc-editor"
-        self.container.appendChild(textarea)
-    }
-    self.textarea = textarea
-    self._quill = new Quill(self.textarea, {
-        modules: {
-            toolbar: [
-                [{header: [1, 2, false]}],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{'list': 'ordered'}, {'list': 'bullet'}],
-                ['link', 'image', 'video', 'formula', 'code-block'],
-                ['clean']
-            ]
-        },
-        placeholder: 'Compose an epic...',
-        theme: 'snow'
-    })
-    self.content = null
-    self.remoteBinder = null
-    self._remote = null
-    self._workingFile = null
+  var textarea = options.textarea
+  if (!textarea) {
+    textarea = document.createElement('div')
+    textarea.className = 'view doc-editor'
+    self.container.appendChild(textarea)
+  }
+  self.textarea = textarea
+  self._quill = new Quill(self.textarea, {
+    modules: {
+      toolbar: [
+        [{header: [1, 2, false]}],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{'list': 'ordered'}, {'list': 'bullet'}],
+        ['link', 'image', 'video', 'formula', 'code-block'],
+        ['clean']
+      ]
+    },
+    placeholder: 'Compose an epic...',
+    theme: 'snow'
+  })
+  self.content = null
+  self._remote = null
+  self._workingFile = null
 }
 
 DocEditor.prototype.open = function (filePath, remote) {
-    var self = this
-    if(self.remoteBinder) {
-        throw Error('y-richtext already binded!')
-    }
-    self._remote = remote
-    self.remoteBinder = self._remote.yfs.get(filePath)
-    self.remoteBinder.bindQuill(self._quill)
-    self._workingFile = FileSystem.get(filePath)
+  var self = this
+  if (self._remote) {
+    throw Error('y-richtext already binded!')
+  }
+  self._remote = remote
+  self._workingFile = FileSystem.getFileByPath(filePath)
+  if (self._remote && self._workingFile) self._remote.bindQuill(self._workingFile.contentID, self._quill)
 }
 DocEditor.prototype.close = function () {
-    var self = this
-    self.remoteBinder.unbindQuill(self._quill)
-    self.remoteBinder = null
-    self._workingFile = null
-    //TODO: destroy
-    self._quill.disable()
-    delete self._quill
+  var self = this
+  self._remote.unbindQuill(self._workingFile.contentID)
+  self._workingFile = null
+  // TODO: destroy
+  self._quill.disable()
+  delete self._quill
 }
 
 DocEditor.prototype.getWorkingFile = function () {
@@ -43116,6 +43090,7 @@ DocEditor.prototype.bindTab = function (tab) {
   self.bindedTab = tab
 }
 module.exports = DocEditor
+
 },{"./../filesystem/filesystem":447,"events":354,"inherits":363}],443:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
@@ -43123,46 +43098,44 @@ var FileSystem = require('./../filesystem/filesystem')
 
 inherits(HtmlEditor, EventEmitter)
 
-function HtmlEditor(options) {
-    var self = this
-    if (!(self instanceof HtmlEditor)) return new HtmlEditor(options)
+function HtmlEditor (options) {
+  var self = this
+  if (!(self instanceof HtmlEditor)) return new HtmlEditor(options)
 
   options = options || {}
   self.title = options.title || 'no name'
-  self.container = options.container || document.createElement("div")
+  self.container = options.container || document.createElement('div')
   self.container.className = 'editor-view'
   self.bindedTab = null
 
-    var dom = options.textarea
-    if (!dom) {
-        dom = document.createElement("div")
-        dom.className = "view html-viewer"
-        self.container.appendChild(dom)
-    }
-    self.dom = dom
-    self.dom.innerHTML = options.content || ''
+  var dom = options.textarea
+  if (!dom) {
+    dom = document.createElement('div')
+    dom.className = 'view html-viewer'
+    self.container.appendChild(dom)
+  }
+  self.dom = dom
+  self.dom.innerHTML = options.content || ''
 
-    self._remote = null
-    self._workingFile = null
+  self._remote = null
+  self._workingFile = null
 }
 
 HtmlEditor.prototype.open = function (filePath, remote) {
-    var self = this
-    if(self._remote) {
-        throw Error('already binded!')
-    }
-    if (remote) {
-        self._remote = remote
-        self.dom.innerHTML = self._remote.yfs.get(filePath)
-    }else {
-        self._remote = 'unsupported file'
-    }
-    self._workingFile = FileSystem.get(filePath)        
+  var self = this
+  if (self._remote) {
+    throw Error('already binded!')
+  }
+  self._workingFile = FileSystem.getFileByPath(filePath)
+
+  self._remote = remote
+  if (remote && self._workingFile) self.dom.innerHTML = self._remote.yFSNodes.get(self._workingFile.contentID)
 }
 HtmlEditor.prototype.close = function () {
-    var self = this
-    self.dom.innerHTML = ''
-    self._remote = null
+  var self = this
+  self.dom.innerHTML = ''
+  self._remote = null
+  self._workingFile = null
 }
 HtmlEditor.prototype.getWorkingFile = function () {
   var self = this
@@ -43173,18 +43146,19 @@ HtmlEditor.prototype.bindTab = function (tab) {
   self.bindedTab = tab
 }
 module.exports = HtmlEditor
+
 },{"./../filesystem/filesystem":447,"events":354,"inherits":363}],444:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 // var FileSystem = require('./../filesystem/filesystem')
-// var Util = require('./../filesystem/util')
+var util = require('./../filesystem/util')
 var User = require('./../auth/user')
 
 inherits(Reply, EventEmitter)
 
-function Reply () {
+function Reply (options) {
   var self = this
-  if (!(self instanceof Reply)) return new Reply()
+  if (!(self instanceof Reply)) return new Reply(options)
 
   self.lineWidgets = null
   // self.replies = undefined // Y-Array로 댓글 오브젝트를 저장하는 배열이다.
@@ -43194,64 +43168,66 @@ function Reply () {
   // reply      { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, content }
   // replyInput { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, input_content }
   self.replyPanel = null
-  self.cm = null
-  self.timeticks = null
-  self.timeouts = null
-  self._workingFilePath = null
+  self.cm = options.cm
+  self.timeticks = []
+  self.timeouts = []
+  self.contentID = options.contentID
+
+  self.setReplyPanel(self.cm)
 }
 
-Reply.prototype.setReplies = function (filePath, cm, replies) {
+Reply.prototype.setReplies = function (contentID, cm, replies) {
   var self = this
-  self._workingFilePath = filePath
+  self.contentID = contentID
   self.reinputs = []
   self.cm = cm
   if (self.timeticks) {
-    for (var j = 0;j < self.timeticks.length;j++) {
+    for (var j = 0; j < self.timeticks.length; j++) {
       clearInterval(self.timeticks[j])
     }
   }
   self.timeticks = []
   if (self.timeouts) {
-    for (var j = 0;j < self.timeouts.length;j++) {
-      clearInterval(self.timeouts[j])
+    for (var k = 0; k < self.timeouts.length; k++) {
+      clearInterval(self.timeouts[k])
     }
   }
   self.timeouts = []
   self.setReplyPanel(self.cm)
 
   if (self.lineWidgets) {
-    for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
+    for (var m = self.lineWidgets.length - 1; m >= 0; m--) {
       self.removeReply({
-        reply_id: self.lineWidgets[j].node.getAttribute('id').replace("reply-","")
+        reply_id: self.lineWidgets[m].node.getAttribute('id').replace('reply-', '')
       }, true)
     }
   }
   self.lineWidgets = []
 
-  console.log('Reply: see replies structure: ' + JSON.stringify(replies));
+  console.log('Reply: see replies structure: ' + JSON.stringify(replies))
   for (var i = 0; i < replies.length; i++) {
     self.addReply(replies[i])
   }
-  console.log('Reply set init finished: ' + self._workingFilePath);
+  console.log('Reply set init finished: ' + self.contentID)
 }
 
-Reply.prototype.getLineChange = function (cm, replies) {
+Reply.prototype.updateLineChange = function (cm, replies) {
   var self = this
-  if (!self.lineWidgets) return []
+  if (!self.lineWidgets) return
   var changeobjs = []
-  if (typeof replies === 'undefined') return []
-  var ch_replies = replies.toArray()
+  if (typeof replies === 'undefined') return
+  var chReplies = replies.toArray()
   for (var j = 0; j < self.lineWidgets.length; j++) {
-    for (var i = 0; i < ch_replies.length; i++) {
+    for (var i = 0; i < chReplies.length; i++) {
       // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + repliesarray[i].reply_id)
       if (self.lineWidgets[j].node.getAttribute('id') === 'reply-' + replies.get(i).get('reply_id')) {
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) != replies.get(i).get('line_num')) {
+        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== replies.get(i).get('line_num')) {
           // console.log("line_num needs to be change: " + replies.get(i).reply_id)
-          var new_line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
-          if (!new_line_num) break
+          var newLineNum = self.cm.getLineNumber(self.lineWidgets[j].line)
+          if (!newLineNum) break
           changeobjs.push({
             reply_id: replies.get(i).get('reply_id'),
-            line_num: new_line_num
+            line_num: newLineNum
           })
         }
       }
@@ -43260,24 +43236,35 @@ Reply.prototype.getLineChange = function (cm, replies) {
       // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
       if (self.lineWidgets[j].node.getAttribute('id') === 'reply-input-container-' + self.reinputs[k].reply_id) {
         // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) != self.reinputs[k].line_num) {
+        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== self.reinputs[k].line_num) {
           self.reinputs[k].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
         }
       }
     }
   }
-  return changeobjs
+  if (changeobjs.length > 0) {
+    changeobjs.forEach(function (cobj) {
+      self.emit('changeReply', {
+        contentID: self.contentID,
+        optype: 'update',
+        opval: {
+          reply_id: cobj.reply_id,
+          line_num: cobj.line_num
+        }
+      })
+    })
+  }
 }
 
 Reply.prototype.addReplyInput = function (line, level, order) {
   var self = this
-  self.removeReplyInput(); // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
+  self.removeReplyInput() // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
 
   level = typeof level === 'undefined' ? 0 : level
   var instertorder = typeof order === 'undefined' ? 0 : order
 
   var rcount = 0
-  for (var i = 0;i < self.lineWidgets.length;i++) {
+  for (var i = 0; i < self.lineWidgets.length; i++) {
     if (self.cm.getLineNumber(self.lineWidgets[i].line) === line) {
       rcount++
     }
@@ -43290,8 +43277,8 @@ Reply.prototype.addReplyInput = function (line, level, order) {
 
   // 댓글 입력 노드를 삽입하는 함수이다.
   // line은 에디터 줄의 번호나 lineHandle 오브젝트, 혹은 이미 등록된 댓글 노드의 id가 될 수 있다.
-  var reply_id = self.genId()
-  var replyinputdom = document.createElement('DIV'); // 삽입할 노드를 생성한다.
+  var reply_id = util.randomStr()
+  var replyinputdom = document.createElement('DIV') // 삽입할 노드를 생성한다.
   replyinputdom.setAttribute('class', 'reply-box')
   replyinputdom.setAttribute('id', 'reply-input-container-' + reply_id)
   replyinputdom.innerHTML = '<div class="reply" style="margin:0;padding:5px; background-color:#f6f7f9;">' +
@@ -43346,13 +43333,13 @@ Reply.prototype.onAddReply = function (event, reply_id) {
   // 댓글입력노드에서 키를 누르면 호출된다. enter 키를 감지하면 댓글노드를 삽입한다.
   // event는 onkeydown 이벤트에서 전달된 이벤트 오브젝트이다.
   // reply_id는 해당 노드 id의 번호이다.
-  if (event.keyCode == 13 || event.which == 13) {
+  if (event.keyCode === 13 || event.which === 13) {
     // event.keyCode == 13 은 enter 키이다. event.which는 브라우져 호환성을 위해 삽입했다.
     // 댓글 입력 내용을 가져올 노드이다.
     var targetinput
     for (var i = 0; i < self.reinputs.length; ++i) {
       // self.reinputs 배열에서 댓글입력노드를 찾는다.
-      if (self.reinputs[i].reply_id == reply_id) {
+      if (self.reinputs[i].reply_id === reply_id) {
         targetinput = self.reinputs[i]
       }
     }
@@ -43371,7 +43358,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
   var textcontent, reply_id
   if (set_from_user) {
     textcontent = replyobj.input_content
-    reply_id = self.genId()
+    reply_id = util.randomStr()
     self.removeReplyInput()
   } else {
     textcontent = replyobj.content
@@ -43380,7 +43367,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
 
   console.log('going to add reply: ' + reply_id)
   if (typeof reply_id === 'undefined') {
-    console.error('Cannot add reply of undefined: ' + self._workingFilePath);
+    console.error('Cannot add reply of undefined: ' + self.contentID);
   }
 
   var replydom = document.createElement('DIV')
@@ -43416,12 +43403,12 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
   // if (replyobj.order >= rcount) self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom))
   // else self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom, { insertAt: replyobj.order }))
   var widget = self.cm.addLineWidget(replyobj.line_num, replydom)
-self.lineWidgets.push(widget)
-console.log('widget is: ' + widget);
+  self.lineWidgets.push(widget)
+  console.log('widget is: ' + widget)
 
   console.log('reply inserted at line: ' + replyobj.line_num + ' order: ' + replyobj.order + ' of total: ' + rcount)
 
-  if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
+  if (replyobj.user_id === User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
     var oarcd = function () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
       clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
@@ -43443,7 +43430,7 @@ console.log('widget is: ' + widget);
   // self.addReplyInput(replyobj.line_num, replyobj.level, replyobj.order + 1)
 
   self.emit('changeReply', {
-    filePath: self._workingFilePath,
+    contentID: self.contentID,
     optype: 'insert',
     opval: {
       user_id: replyobj.user_id,
@@ -43467,11 +43454,13 @@ Reply.prototype.getTimeDifference = function (current, previous) {
   var msPerMonth = msPerDay * 30
   var msPerYear = msPerDay * 365
   var elapsed = current - previous
-  if (elapsed < msPerMinute) { return Math.floor(elapsed / 1000) + ' seconds ago'; }
-  else if (elapsed < msPerHour) { return Math.floor(elapsed / msPerMinute) + ' minutes ago'; }
-  else if (elapsed < msPerDay) { return Math.floor(elapsed / msPerHour) + ' hours ago'; }
-  else if (elapsed < msPerMonth) { return Math.floor(elapsed / msPerDay) + ' days ago'; }
-  else if (elapsed < msPerYear) { return 'approximately ' + Math.floor(elapsed / msPerMonth) + ' months ago'; }else { return Math.floor(elapsed / msPerYear) + ' years ago'; }
+
+  if (elapsed < msPerMinute) return Math.floor(elapsed / 1000) + ' seconds ago'
+  else if (elapsed < msPerHour) return Math.floor(elapsed / msPerMinute) + ' minutes ago'
+  else if (elapsed < msPerDay) return Math.floor(elapsed / msPerHour) + ' hours ago'
+  else if (elapsed < msPerMonth) return Math.floor(elapsed / msPerDay) + ' days ago'
+  else if (elapsed < msPerYear) return 'approximately ' + Math.floor(elapsed / msPerMonth) + ' months ago'
+  else return Math.floor(elapsed / msPerYear) + ' years ago'
 }
 
 Reply.prototype.removeReplyInput = function () {
@@ -43493,8 +43482,8 @@ Reply.prototype.removeReply = function (robj, dontsync) {
   var self = this
   dontsync = (typeof dontsync === 'undefined') ? false : dontsync
   // 'user_request':User.user_id
-  if (typeof robj.user_request !== 'undefined') {
-    if (robj.user_id != robj.user_request) {
+  if (robj.user_request) {
+    if (robj.user_id !== robj.user_request) {
       console.log('Failed to remove reply. Permission denied.')
       return
     }
@@ -43504,9 +43493,9 @@ Reply.prototype.removeReply = function (robj, dontsync) {
       self.cm.removeLineWidget(self.lineWidgets[j])
       self.lineWidgets.splice(j, 1)
       if (dontsync === false) {
-        console.log('reply removed by user');
+        console.log('reply removed by user')
         self.emit('changeReply', {
-          filePath: self._workingFilePath,
+          contentID: self.contentID,
           optype: 'delete',
           opval: {
             reply_id: robj.reply_id
@@ -43549,7 +43538,7 @@ Reply.prototype.createButton = function (cm, config) {
   if (config.el) {
     if (typeof config.el === 'function') {
       buttonNode = config.el(cm)
-    } else { buttonNode = config.el; }
+    } else { buttonNode = config.el }
   } else {
     buttonNode = document.createElement('button')
     buttonNode.innerHTML = config.label
@@ -43563,8 +43552,8 @@ Reply.prototype.createButton = function (cm, config) {
     //   })
     buttonNode.addEventListener('click', config.callback.bind(this, cm))
 
-    if (config.class) { buttonNode.className = config.class; }
-    if (config.title) { buttonNode.setAttribute('title', config.title); }
+    if (config.class) { buttonNode.className = config.class }
+    if (config.title) { buttonNode.setAttribute('title', config.title) }
   }
   if (config.hotkey) {
     var map = {}
@@ -43574,127 +43563,68 @@ Reply.prototype.createButton = function (cm, config) {
   return buttonNode
 }
 
-Reply.prototype.genId = function () {
-  return Math.random().toString(36).substr(2)
-}
+module.exports = Reply
 
-module.exports = new Reply()
-
-},{"./../auth/user":440,"events":354,"inherits":363}],445:[function(require,module,exports){
+},{"./../auth/user":440,"./../filesystem/util":448,"events":354,"inherits":363}],445:[function(require,module,exports){
 var util = require('./util')
 
-function Directory (path) {
+function Directory (options) {
   var self = this
-  if (!(self instanceof Directory)) return new Directory()
+  if (!(self instanceof Directory)) return new Directory(options)
 
-  self.name = util.getFilename(path)
-  self.path = path
+  self.name = options.name
+  self.path = options.parentPath + '/' + options.name
+  self.type = util.DIRECTORY_TYPE
+  self.contentID = options.contentID || null
+  self.parentPath = options.parentPath
   self.nodes = []
-  self.isDir = true
-  self.type = 'directory'
+  self.isCollapsed = false
+}
+
+Directory.prototype.change = function (options) {
+  var self = this
+  if (options.name) self.name = options.name
+  if (options.parentPath) self.parentPath = options.parentPath
+  if (options.contentID) self.contentID = options.contentID
+  self.path = self.parentPath + '/' + self.name
 }
 
 module.exports = Directory
 
 },{"./util":448}],446:[function(require,module,exports){
-/* global CodeMirror, Quill */
-var util = require('./util')
+// var util = require('./util')
+var EventEmitter = require('events').EventEmitter
+var inherits = require('inherits')
+inherits(File, EventEmitter)
 
-function File (path) {
+function File (options) {
   var self = this
-  if (!(self instanceof File)) return new File()
+  if (!(self instanceof File)) return new File(options)
 
-  self.name = util.getFilename(path)
-  self.path = path
-  self.isDir = false
-  self.type = util.findFileType(path)
-
-  self._content = null
-  self.cmdoc = null
-  self.quilldelta = null
-  if(self.type === 'text') self.cmdoc = new CodeMirror.Doc('', util.pathToCodeMode(path))
-  
-  Object.defineProperty(self, 'content', {
-    get: function () {
-      switch (self.type) {
-        case 'image': return self._content
-        case 'text': return self.cmdoc.getValue()
-        case 'quilljs': 
-          var tempCont = document.createElement("div");
-          (new Quill(tempCont)).setContents(self.quilldelta)
-          return tempCont.getElementsByClassName("ql-editor")[0].innerHTML
-        default: return self._content
-      }
-    },
-    set: function (value) {
-      switch (self.type) {
-        case 'image':
-          self._content = value
-          break;
-        case 'text':
-          self.cmdoc.setValue(value)
-          break;
-        case 'quilljs':
-          self.quilldelta = value
-          break;
-        default:
-          self._content = value
-          break;
-      }
-    }
-  })
-  
-  Object.defineProperty(self, 'size', {
-    get: function () {
-      switch (self.type) {
-        case 'image': return self._content.length
-        case 'text': return self.cmdoc.getValue().length
-        case 'quilljs': return self.content.length
-        default: return self._content.length
-      }
-    }
-  })
+  self.name = options.name
+  self.path = options.parentPath + '/' + options.name
+  self.type = options.type
+  self.parentPath = options.parentPath
+  self.contentID = options.contentID || null
+  self.replydbID = options.replydbID || null
 }
 
-// File.prototype.write = function (value, cb) {
-//   var self = this
-//   switch (self.type) {
-//     case 'image':
-//       self.content = value
-//       break;
-//     case 'text':
-//       self.cmdoc.setValue(value)
-//       break;
-//     case 'quilljs':
-//       break;
-//     default:
-//       self.content = value
-//       break;
-//   }
-//   if (cb) cb()
-// }
+File.prototype.change = function (options) {
+  var self = this
+  if (options.name) self.name = options.name
+  if (options.type) self.type = options.type
+  if (options.parentPath) self.parentPath = options.parentPath
+  if (options.contentID) self.contentID = options.contentID
+  if (options.replydbID) self.replydbID = options.replydbID
+  self.path = self.parentPath + '/' + self.name
 
-// File.prototype.read = function (cb) {
-//   var self = this
-//   var cont = self.content
-//   switch (self.type) {
-//     case 'image':
-//       break;
-//     case 'text':
-//       cont = self.cmdoc.getValue()
-//       break;
-//     case 'quilljs':
-//       break;
-//     default:
-//       break;
-//   }
-//       if (cb) cb(cont)
-// }
+  self.emit('change', self)
+}
 
 module.exports = File
 
-},{"./util":448}],447:[function(require,module,exports){
-/* globals JSZip, Blob, CodeMirror */
+},{"events":354,"inherits":363}],447:[function(require,module,exports){
+/* globals */
 
 var File = require('./file')
 var Directory = require('./directory')
@@ -43705,286 +43635,195 @@ var inherits = require('inherits')
 
 inherits(FileSystem, EventEmitter)
 
-var ignoredFilenames = ['__MACOSX', '.DS_Store']
+function FileSystem () {
+  var self = this
+  if (!(self instanceof FileSystem)) return new FileSystem()
 
-function FileSystem() {
-    var self = this
-    if (!(self instanceof FileSystem)) return new FileSystem()
-
-    self._tree = [
-    new Directory('')
-  ]
+  self._tree = new Directory({
+    name: '@',
+    type: util.DIRECTORY_TYPE,
+    contentID: 'root',
+    parentPath: '',
+    nodes: []
+  })
 }
 
-// Loads a project
-FileSystem.prototype.loadProject = function (file, cb) {
-    var self = this
-
-    // TODO: More load types
-    self.unzip(file, function () {
-        cb(self._tree[0].nodes)
-    })
-
-    // TODO: More input options
-}
-
-// Saves the project
-FileSystem.prototype.saveProject = function (saveType, cb) {
-    var self = this
-
-    // TODO: More save types
-    if (saveType === 'zip') {
-        try {
-            var zip = new JSZip()
-            util.zipTree(zip, self._tree[0].nodes)
-
-            zip.generateAsync({
-                type: 'blob'
-            }).then(function (content) {
-                window.saveAs(content, 'myProject.zip')
-                cb(true)
-            })
-        } catch (err) {
-            console.error(err)
-            cb(false)
-        }
-    }
-}
-
-// Makes a directory, building paths
-FileSystem.prototype.mkdir = function (path) {
-    var self = this
-
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-
-    self._buildPath(parentPath)
-    if (self._getNode(path, self._getNode(parentPath).nodes)) return false
-    self._getNode(parentPath).nodes.push(new Directory(path))
-
+FileSystem.prototype.mkdir = function (yfsnode) { // Makes a directory
+  var self = this
+  if (!self.existsByPath(yfsnode.parentPath + '/' + yfsnode.name)) {
+    self.getFileByPath(yfsnode.parentPath).nodes.push(
+      new Directory(yfsnode)
+    )
     return true
+  }
+  return false
 }
 
-// Makes an empty file (must set doc), building paths
-FileSystem.prototype.mkfile = function (path) {
-    var self = this
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-
-    self._buildPath(parentPath)
-    if (self._getNode(path, self._getNode(parentPath).nodes)) return false
-    self._getNode(parentPath).nodes.push(new File(path))
-
+FileSystem.prototype.mkfile = function (yfsnode) { // Makes an empty file
+  var self = this
+  if (!self.existsByPath(yfsnode.parentPath + '/' + yfsnode.name)) {
+    self.getFileByPath(yfsnode.parentPath).nodes.push(
+      new File(yfsnode)
+    )
     return true
+  }
+  return false
 }
 
-FileSystem.prototype.rename = function (path, newName) {
-    var self = this
-    
-    var parentPath = path.split('/');
-    parentPath.splice(-1, 1);
-    parentPath = parentPath.join('/');
-    
-    // 상위 경로에 폴더들과 파일들이 다 존재하는지 검사
-    self._buildPath(parentPath);
-    
-    if (self._getNode(parentPath + '/' + newName, self._getNode(parentPath).nodes)) return false;
-    
-    var targetNode = self._getNode(path);
-    targetNode.name = newName;
-    targetNode.path = parentPath + '/' + newName;
-    
-    if(targetNode.isDir){
-        targetNode.nodes.forEach(function(node){
-            self.renameChildren(node, targetNode.path);
-        })
-    }
-    
-    return true;
-};
-
-FileSystem.prototype.renameChildren = function (node, parentPath) {
-    var self = this
-    
-    node.path = parentPath + '/' + node.name;
-    
-    if(node.isDir){
-        node.nodes.forEach(function(child){
-            self.renameChildren(child, node.path);
-        })
-    }
-};
+FileSystem.prototype.changeDirInfoSync = function (yfsnode) { // Makes a directory
+  var self = this
+  if (self.existsBycontentID(yfsnode.contentID)) {
+    var node = self.getFileByContentID(yfsnode.contentID)
+    node.change(yfsnode)
+    self.changeSubDirRecursive(node.path, node.nodes) // change sub nodes parentPath recursively.
+    return true
+  }
+  return false
+}
+FileSystem.prototype.changeFileInfoSync = function (yfsnode) { // Makes an empty file
+  var self = this
+  if (self.existsBycontentID(yfsnode.contentID)) {
+    self.getFileByContentID(yfsnode.contentID).change(yfsnode)
+    return true
+  }
+  return false
+}
+FileSystem.prototype.changeDirInfo = function (path, newMeta) { // Makes a directory
+  var self = this
+  var node = self.getFileByPath(path)
+  if (node) {
+    node.change(newMeta)
+    self.changeSubDirRecursive(node.path, node.nodes)
+    return true
+  }
+  return false
+}
+FileSystem.prototype.changeFileInfo = function (path, newMeta) { // Makes an empty file
+  var self = this
+  var node = self.getFileByPath(path)
+  if (node) {
+    node.change(newMeta)
+    return true
+  }
+  return false
+}
+FileSystem.prototype.changeSubDirRecursive = function (parentPath, nodeList) { // Makes a directory
+  var self = this
+  nodeList.forEach(function (node) {
+    node.change({parentPath: parentPath})
+    if (node.type === util.DIRECTORY_TYPE) self.changeSubDirRecursive(node.path, node.nodes)
+  })
+}
 
 FileSystem.prototype.getContained = function (path) {
-    var self = this
+  var self = this
 
-    var dir = self.getFile(path)
-    if (!dir.isDir) return [dir]
+  var dir = self.getFileByPath(path)
+  if (dir.type !== util.DIRECTORY_TYPE) return [dir]
 
-    var contained = []
+  var contained = []
 
-    dir.nodes.forEach(function (node) {
-        self.getContained(node.path).forEach(function (c) {
-            contained.push(c)
-        })
+  dir.nodes.forEach(function (node) {
+    self.getContained(node.path).forEach(function (c) {
+      contained.push(c)
     })
+  })
 
-    return contained
+  return contained
 }
 
-// Ensures all directories have been built along a path
-FileSystem.prototype._buildPath = function (path) {
-    var self = this
+// Recursive node search with file path
+FileSystem.prototype.getFileByPath = function (path, nodeList) {
+  var self = this
+  console.log('check ' + path)
+  if (path === '@' || path === '') return self._tree
 
-    var split = path.split('/')
-    for (var i = 0; i <= split.length; i++) {
-        var check = split.slice(0, i).join('/')
-        if (!self._getNode(check)) {
-            self.mkdir(check)
-        }
+  nodeList = nodeList || self._tree.nodes
+  for (var i = 0; i < nodeList.length; i++) {
+    if (nodeList[i].path === path) {
+      return nodeList[i]
+    } else if (nodeList[i].type === util.DIRECTORY_TYPE) {
+      var recur = self.getFileByPath(path, nodeList[i].nodes)
+      if (recur) return recur
     }
+  }
+  return undefined
 }
 
-// Recursive node search
-FileSystem.prototype._getNode = function (path, nodeList) {
-    var self = this
+// Recursive node search with contentID
+FileSystem.prototype.getFileByContentID = function (contentID, nodeList) {
+  var self = this
 
-    nodeList = nodeList || self._tree
-    for (var i = 0; i < nodeList.length; i++) {
-        if (nodeList[i].path === path) {
-            return nodeList[i]
-        } else if (nodeList[i].isDir) {
-            var recur = self._getNode(path, nodeList[i].nodes)
-            if (recur) return recur
-        }
+  nodeList = nodeList || self._tree.nodes
+  for (var i = 0; i < nodeList.length; i++) {
+    if (nodeList[i].contentID === contentID) {
+      return nodeList[i]
+    } else if (nodeList[i].type === util.DIRECTORY_TYPE) {
+      var recur = self.getFileByContentID(contentID, nodeList[i].nodes)
+      if (recur) return recur
     }
-    return undefined
+  }
+  return undefined
 }
 
 // Checks if a file/directory exists at a path
-FileSystem.prototype.exists = function (path) {
-    var self = this
-
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-
-    return !!self._getNode(path)
+FileSystem.prototype.existsByPath = function (path) {
+  var self = this
+  return !!self.getFileByPath(path)
 }
-
-// Gets a node, building any broken paths
-FileSystem.prototype.get = function (path) {
-    var self = this
-
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-
-    self._buildPath(parentPath)
-    return self._getNode(path)
-}
-
-// Gets an existing file, or creates one if none exists
-FileSystem.prototype.getFile = function (path) {
-    var self = this
-
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-
-    self._buildPath(parentPath)
-    return self._getNode(path) || (function () {
-        self.mkfile(path)
-        return self._getNode(path)
-    }())
+FileSystem.prototype.existsBycontentID = function (contentID) {
+  var self = this
+  return !!self.getFileByContentID(contentID)
 }
 
 // Deletes a file/directory on a path
 FileSystem.prototype.delete = function (path) {
-    var self = this
-    var parentPath = path.split('/')
-    parentPath.splice(-1, 1)
-    parentPath = parentPath.join('/')
-    self._getNode(parentPath).nodes = self._getNode(parentPath).nodes.filter(function (e) {
-        if (e.path === path) {
-            return false
-        }
-        return true
+  var self = this
+  var parentPath = util.getParentPath(path)
+  var file = self.getFileByPath(parentPath)
+  if (file) {
+    file.nodes = file.nodes.filter(function (e) {
+      if (e.path === path) return false
+      return true
     })
+  }
+}
+
+FileSystem.prototype.getFileSync = function (node) {
+  var self = this
+  self._buildPath(node.parentPath)
+  // network 에서 sync를 할 때 파일이 폴더 구조 순서대로 안 오는 경우에 대비해서 미리 폴더구조를 만드는 것이다.
+
+  if (self.existsByPath(node.parentPath + '/' + node.name)) {
+    if (node.type === util.DIRECTORY_TYPE) self.changeDirInfoSync(node)
+    else self.changeFileInfoSync(node)
+  } else {
+    if (node.type === util.DIRECTORY_TYPE) self.mkdir(node)
+    else self.mkfile(node)
+  }
+}
+
+// Ensures all directories have been built along a path
+FileSystem.prototype._buildPath = function (path) {
+  var self = this
+
+  var split = path.split('/')
+  for (var i = 0; i <= split.length; i++) {
+    var check = split.slice(0, i).join('/')
+    if (!self.existsByPath(check)) {
+      self.mkdir({
+        name: util.getFilename(check),
+        parentPath: util.getParentPath(check)
+      })
+    }
+  }
 }
 
 // Returns the useable part of the tree
 FileSystem.prototype.getTree = function () {
-    var self = this
-    
-    return self._tree[0].nodes
-}
-
-// Return array of all files and folders
-FileSystem.prototype.getAllFiles = function () {
-    var self = this
-
-    var all = []
-
-    function walk(dir) {
-        for (var i = 0; i < dir.nodes.length; i++) {
-            if (dir.nodes[i].isDir) {
-                walk(dir.nodes[i])
-            }
-            all.push(dir.nodes[i])
-        }
-    }
-
-    walk(self._tree[0])
-
-    return all
-}
-
-// Loads a project from a zip file
-FileSystem.prototype.unzip = function (file, cb) {
-    var self = this
-
-    JSZip.loadAsync(file).then(function (zip) {
-        var awaiting = Object.keys(zip.files).length
-        zip.forEach(function (relativePath, zipEntry) {
-            if (relativePath[0] !== '/') relativePath = '/' + relativePath
-
-            // Filter out ignored files
-            for (var i = 0; i < ignoredFilenames.length; i++) {
-                if (relativePath.indexOf(ignoredFilenames[i]) !== -1) {
-                    if (--awaiting <= 0) cb()
-                    return
-                }
-            }
-
-            relativePath = relativePath.split('/')
-            relativePath.splice(0, 1)
-            relativePath = relativePath.join('/')
-            relativePath = '/' + relativePath
-
-            if (zipEntry.dir) {
-                relativePath = relativePath.slice(0, -1)
-            }
-
-            var parentPath = relativePath.split('/')
-            parentPath.splice(-1, 1)
-            parentPath = parentPath.join('/')
-
-            if (zipEntry.dir) {
-                self.mkdir(relativePath)
-                if (--awaiting <= 0) cb()
-            } else {
-                self.mkfile(relativePath)
-                zipEntry.async('string').then(function (content) {
-                    self.get(relativePath).cmdoc = new CodeMirror.Doc(content, util.pathToCodeMode(relativePath))
-                    self.emit('unzipFile', self.get(relativePath))
-                    if (--awaiting <= 0) cb()
-                })
-            }
-        })
-    })
+  var self = this
+  // console.log('track node sync ' + JSON.stringify(self._tree))
+  return self._tree.nodes
 }
 
 module.exports = new FileSystem()
@@ -43995,6 +43834,12 @@ var util = {}
 util.getFilename = function (path) {
   var split = path.split('/')
   return split[split.length - 1]
+}
+
+util.getParentPath = function (path) {
+  var parentPath = path.split('/')
+  parentPath.splice(-1, 1)
+  return parentPath.join('/')
 }
 
 util.getExtension = function (path) {
@@ -44047,39 +43892,29 @@ util.pathCheck = function (path) {
   return PATH_MAPPINGS[util.getExtension(path)] || null
 }
 util.findFileType = function (path) {
-  return (util.pathCheck(path) 
-  || (!!util.pathToCodeMode(path).name?'text':null) 
-  || util.getViewMapping(path) 
-  || 'unknown')
+  return (util.pathCheck(path) || (util.pathToCodeMode(path).name ? 'text' : null) || util.getViewMapping(path) || 'unknown')
 }
 
-// Creates a zip archive from a file tree
-util.zipTree = function (zip, nodeList) {
-  console.log(nodeList)
-  for (var i = 0; i < nodeList.length; i++) {
- // Iterate children
-
-    if (nodeList[i].isDir) {
-      util.zipTree(zip, nodeList[i].nodes)
-    } else {
-      zip.file(nodeList[i].path.slice(1), nodeList[i].content)
-    }
-  }
-}
+util.DIRECTORY_TYPE = 'directory'
 
 util.getParameterByName = function (name) {
-    var url = window.location.href;
-    name = name.replace(/[\[\]]/g, "\\$&");
-    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, " "));
+  var url = window.location.href
+  name = name.replace(/[\[\]]/g, '\\$&')
+  var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)')
+  var results = regex.exec(url)
+  if (!results) return null
+  if (!results[2]) return ''
+  return decodeURIComponent(results[2].replace(/\+/g, ' '))
+}
+
+util.randomStr = function () {
+  return Math.random().toString(36).substr(2)
 }
 
 module.exports = util
 
 },{}],449:[function(require,module,exports){
+/* global localStorage */
 // y-js browser debug state
 
 localStorage.debug = 'y:*,MH:*'
@@ -44091,8 +43926,8 @@ var Interface = require('./interface/interface')
 var CodeEditor = require('./editor/codeeditor')
 var DocEditor = require('./editor/doceditor')
 var HtmlEditor = require('./editor/htmlviewer')
-var Remote = require('./network/multihack-core')
-var HyperHostWrapper = require('./network/hyperhostwrapper')
+var Network = require('./network/network')
+// var HyperHostWrapper = require('./network/hyperhostwrapper')
 var util = require('./filesystem/util')
 var Voice = require('./network/voice')
 var lang = require('./interface/lang/lang')
@@ -44100,387 +43935,297 @@ var lg = lang.get.bind(lang)
 var Reply = require('./editor/reply')
 var User = require('./auth/user')
 
-function Multihack(config) {
-    var self = this
-    if (!(self instanceof Multihack)) return new Multihack(config)
-    // make it as an object.
-    // 함수로 불러도 오브젝트로 생성해서 반환한다.
+// FileSystem is an virtual file system made with object(File, Folder) and array.
+// self.netManager is multihack-core. And it controls network and realtime document sync(CRDT).
+// for document sync, I use yjs module.
+// FileSystem 오브젝트는 js object와 array로 만든 가상의 파일시스템이다.
+// self.netManager (multihack-core)는 네트워크 및 CRDT 문서 동기화를 하는 모듈이다.
 
-    config = config || {}
-    // config: { hostname }
+function Multihack (config) {
+  var self = this
+  if (!(self instanceof Multihack)) return new Multihack(config)
+  // make it as an object.
+  // 함수로 불러도 오브젝트로 생성해서 반환한다.
 
-    var _openView = function (e) {
-        var view = Interface.workspacePane.isOnPane(e.path)
-        if (view) {
-            Interface.workspacePane.changeView(view)
-            return
-        }
+  config = config || {}
+  // config: { hostname }
 
-        debug('open view with type: ' + util.findFileType(e.path))
-
-        if (util.findFileType(e.path) === 'text') {
-            view = new CodeEditor()
-            view.open(e.path, self._remote)
-            self._remote.onObserver(e.path + '.replydb')
-            self._remote.onObserver(e.path)
-            // setting an observer for document sync.
-            // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
-            Reply.setReplies(e.path + '.replydb', view._cm, self._remote.getReplyContent(e.path + '.replydb'))
-            // Load and set reply data after file opens.
-            // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
-        } else if (util.findFileType(e.path) === 'quilljs') {
-            view = new DocEditor()
-            view.open(e.path, self._remote)
-            // } else if(util.findFileType(e.path) === 'image') {
-            //   view = new HtmlEditor({content:''})
-            //   view.open(e.path,self._remote)
-            //   // TODO: image viewer 만든다.
-        } else {
-            view = new HtmlEditor({
-                content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
-            })
-            view.open(e.path, null)
-        }
-
-        Interface.workspacePane.addView(util.getFilename(e.path), view)
+  var _openView = function (e) {
+    var view = Interface.workspacePane.isOnPane(e.path)
+    if (view) {
+      Interface.workspacePane.changeView(view)
+      return
     }
-    Interface.workspacePane.on('viewChange', function (e) {
-        if (e.view.getWorkingFile().type === 'text') {
-            var filepath = e.view.getWorkingFile().path
-            Reply.setReplies(filepath + '.replydb', e.view._cm, self._remote.getReplyContent(filepath + '.replydb'))
-        }
-    })
+    var filenode = FileSystem.getFileByPath(e.path)
+    // var filenode = FileSystem.getFileByPath(e.path)
+    debug('open view with type: ' + filenode.type)
 
-    Interface.on('openFile', function (e) {
-        // call when gui opens file.
-        // gui에서 파일을 열때 호출한다.
-        debug('interface try to open file: ' + e.path);
-        FileSystem.getFile(e.path).content = self._remote.getContent(e.path)
-        // observe하지 않는 동안 업데이트 된 내용을 File obj와 동기화한다.
+    if (filenode.type === 'text') {
+      view = new CodeEditor()
+      var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
+      view.open(e.path, self.netManager, reply)
+      // setting an observer for document sync.
+      // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
 
-        // FileSystem is an virtual file system made with object(File, Folder) and array.
-        // doc is document model in CodeMirror. It states contents and options.
-        // self._remote is multihack-core. And it's controls network and realtime document sync(CRDT).
-        // for document sync, I use yjs module. Above getContent function is getting file from yjs document object(y-text).
-        // FileSystem 오브젝트는 js object와 array로 만든 가상의 파일시스템이다.
-        // doc은 CodeMirror 에서 사용하는 오브젝트 모델인데 문서 상태 및 내용을 저장한다.
-        // self._remote (multihack-core)는 네트워크 및 CRDT 문서 동기화를 하는 모듈이다.
-        // 문서 동기화 모델(yjs의 y-text)에서 해당 문서의 내용을 가져와서 파일시스템의 파일에 넣는다.
-
-        _openView(e)
-    })
-
-    Interface.on('addFile', function (e) {
-        // call when gui add file on treeview
-        // 파일/폴더를 생성하는 모달 창에서 파일을 클릭하면 호출한다.
-        var created = FileSystem.mkfile(e.path)
-        // it ignores when it's same filename.
-        // 같은 이름의 파일이 이미 있을 때는 무시한다.
-        if (created) {
-            Interface.treeview.addFile(e.parentElement, FileSystem.get(e.path))
-            self._remote.createFile(e.path)
-            // DOM의 인터페이스에 파일을 추가한다.
-            _openView(e)
-        }
-    })
-
-    Interface.on('addDir', function (e) {
-        // call when gui add directory
-        // 파일/폴더를 생성하는 모달 창에서 폴더를 클릭하면 호출한다.
-        var created = FileSystem.mkdir(e.path)
-        if (created) {
-            Interface.treeview.addDir(e.parentElement, FileSystem.get(e.path))
-            self._remote.createDir(e.path)
-        }
-    })
-
-    Interface.on('removeDir', function (e) {
-        // call when gui delete directory
-        // 폴더 삭제 버튼을 클릭하면 호출한다.
-        var dir = FileSystem.get(e.path)
-
-        Interface.confirmDelete(dir.name, function () {
-            // confirm deleting directory
-            // 폴더 삭제 확인 모달 창을 띄우고 사용자가 확인하면 호출된다.
-            Interface.treeview.remove(e.parentElement, dir)
-            // 인터페이스에서 폴더이름을 지운다.
-            FileSystem.getContained(e.path).forEach(function (file) {
-                // 폴더 안에 파일이 있으면 먼저 다 지운다.
-                var view = Interface.workspacePane.isOnPane(file.path)
-                if (view) Interface.workspacePane.closeView(view)
-                self._remote.deleteFile(file.path)
-            })
-            self._remote.deleteFile(e.path)
-        })
-    })
-
-    Interface.on('deleteFile', function (e) {
-        // 파일을 삭제한다. Pane에 열려있으면 닫는다.
-        if (!e.path) return
-        var view = Interface.workspacePane.isOnPane(e.path)
-        if (view) Interface.workspacePane.closeView(view)
-
-        var workingFile = FileSystem.getFile(e.path)
-        Interface.confirmDelete(workingFile.name, function () {
-            var workingPath = workingFile.path
-            var parentElement = Interface.treeview.getParentElement(workingPath)
-            if (parentElement) {
-                Interface.treeview.remove(parentElement, FileSystem.get(workingPath))
-            }
-            FileSystem.delete(workingPath)
-            self._remote.deleteFile(workingPath)
-        })
-    })
-
-    Interface.on('renameDir', function (e) {
-        // call when gui delete directory
-        // 이벤트가 발생 한 file의 path로 fileSystem에서 file을 받아온다.
-        var dir = FileSystem.get(e.path);
-        var oldPath = dir.path;
-
-
-            console.log('before');
-            console.log(JSON.stringify(dir.path));
-        // get new file/folder name
-        // 수정될 파일이나 폴더 이름을 받는다.
-        Interface.renameDialog(dir.name, function (data) {
-            if (!FileSystem.rename(e.path, data.newName)) return;
-            console.log('after');
-            console.log(JSON.stringify(dir.path));
-            Interface.treeview.renameDir(FileSystem.getTree());
-
-
-            // 창을 다 닫아줘야 하나? 안 닫아도 될까? 고민....
-            /*
-            FileSystem.getContained(dir.path).forEach(function (file) {
-                //var view = Interface.workspacePane.isOnPane(file.path)
-                //if (view) Interface.workspacePane.closeView(view)
-                Interface.treeview.rename(oldId , dir.path);
-            });
-            */
-            self._remote.renameDir(oldPath,dir.path);
-        });
-    });
-
-    // url의 GET 인자와 옵션값을 받는다.
-    self.embed = util.getParameterByName('embed') || null
-    // embed 모드를 설정한다.
-    self.roomID = util.getParameterByName('room') || null
-    // 프로젝트 (룸)이름을 설정한다.
-    self.hostname = config.hostname
-
-    FileSystem.on('unzipFile', function (file) {
-        // call when user upload zip file project.
-        // 프로젝트 파일을 zip 형식으로 업로드 하는 경우 호출한다.
-        self._remote.createFile(file.path, file.content)
-        // 각각의 파일마다 y-text를 만든다.
-        // FIXME: image, binary 등 내용 동기화를 할 필요없는 파일은 y-text를 만들 필요가 없다.
-    })
-
-    Interface.on('saveAs', function (saveType) {
-        // exports project as Zip file
-        // 인터페이스에서 zip으로 내보내기를 클릭하면 호출한다.
-        FileSystem.getContained('').forEach(function (file) {
-            file.content = self._remote.getContent(file.path)
-            // 각각의 파일에 y-text 컨텐츠를 삽입한다.
-        })
-        FileSystem.saveProject(saveType, function (success) {
-            // zip 파일을 만들어서 브라우저에서 다운로드하게 한다.
-            if (success) {
-                Interface.alert(lg('save_success_title'), lg('save_success'))
-            } else {
-                Interface.alert(lg('save_fail_title'), lg('save_fail'))
-            }
-        })
-    })
-
-    Interface.on('deploy', function () {
-        // call when user click deploy button.
-        // It use HyperHost module to run node.js app on browser.
-        // 인터페이스에서 deploy 버튼을 클릭하면 호출한다.
-        // HyperHost는 브라우저 안에 none.js 환경을 에뮬레이트해서 node.js 앱을 실행할 수 있게 해주는 모듈이다.
-        HyperHostWrapper.on('error', function (err) {
-            Interface.alert(lg('deploy_fail_title'), err)
-        })
-
-        HyperHostWrapper.on('ready', function (url) {
-            Interface.alertHTML(lg('deploy_title'), lg('deploy_success', {
-                url: url
-            }))
-        })
-
-        HyperHostWrapper.deploy(FileSystem.getTree())
-    })
-
-    Reply.on('changeReply', function (e) {
-        self._remote.changeReply(e.filePath, e.optype, e.opval)
-    })
-
-    // Originaly on Multihack, it show modal to write room id and user name, but we doesn't need it so I hide it.
-    // 앱을 시작했을 때 모달창이 떠서 룸 id, user id 등을 고르는 부분이 있었는데 필요없어서 숨겼다.
-    Interface.hideOverlay()
-    if (self.embed) {
-        self._initRemote()
+      // Load and set reply data after file opens.
+      // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
+    } else if (filenode.type === 'quilljs') {
+      view = new DocEditor()
+      view.open(e.path, self.netManager)
+      // self.netManager.bindQuill(e.contentID, view._quill)
+      // } else if(util.findFileType(e.path) === 'image') {
+      //   view = new HtmlEditor({content:''})
+      //   view.open(e.path,self.netManager)
+      //   // TODO: image viewer 만든다.
     } else {
-        self._initRemote(function () {
-            // Interface.getProject(function (project) {
-            //   if (project) {
-            //     Interface.showOverlay()
-            //     FileSystem.loadProject(project, function (tree) {
-            //       Interface.treeview.rerender(tree)
-            //       Interface.hideOverlay()
-            //     })
-            //   }
-            // })
-            // also hide zip project file load funciton.
-            // 앱을 시작할 때 프로젝트 ZIP 파일을 로드하는 기능을 껐다.
-            Interface.treeview.rerender(FileSystem.getTree())
-        })
+      view = new HtmlEditor({
+        content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
+      })
+      view.open(e.path, null)
     }
+
+    Interface.workspacePane.addView(filenode.name, view)
+  }
+
+  Interface.workspacePane.on('viewChange', function (e) {
+    // e.view is focused view
+    // if (e.view.getWorkingFile().type === 'text') {
+    //   var filepath = e.view.getWorkingFile().path
+    //   Reply.setReplies(filepath + '.replydb', e.view._cm, self.netManager.getReplyContent(filepath + '.replydb'))
+    // }
+  })
+
+  Interface.on('openFile', function (e) {
+    // call when gui opens file.
+    // gui에서 파일을 열때 호출한다.
+    debug('interface try to open file: ' + e.path)
+    _openView(e)
+  })
+
+  Interface.on('addFile', function (e) {
+    // call when gui add file on treeview
+    // 파일/폴더를 생성하는 모달 창에서 파일을 클릭하면 호출한다.
+    var parentPath = util.getParentPath(e.path)
+    var fileoption = {
+      name: util.getFilename(e.path),
+      type: util.findFileType(e.path),
+      parentPath: parentPath
+    }
+    debug('create filenode: ' + JSON.stringify(fileoption))
+    if (FileSystem.mkfile(fileoption)) {
+      self.netManager.createFile(fileoption.parentPath, fileoption.name, fileoption.type)
+      var filenode = self.netManager.getFileMetaByPath(e.path)
+      FileSystem.getFileByPath(e.path).change({
+        contentID: filenode.contentID,
+        replydbID: filenode.replydbID
+      })
+      Interface.treeview.rerender(FileSystem.getTree())
+      _openView(e)
+    }
+  })
+
+  Interface.on('addDir', function (e) {
+    // call when gui add directory
+    // 파일/폴더를 생성하는 모달 창에서 폴더를 클릭하면 호출한다.
+    var parentPath = util.getParentPath(e.path)
+    var fileoption = {
+      name: util.getFilename(e.path),
+      parentPath: parentPath
+    }
+    debug('create filenode: ' + JSON.stringify(fileoption))
+    if (FileSystem.mkdir(fileoption)) {
+      self.netManager.createDir(fileoption.parentPath, fileoption.name)
+      var filenode = self.netManager.getFileMetaByPath(e.path)
+      FileSystem.getFileByPath(e.path).change({
+        contentID: filenode.contentID
+      })
+      Interface.treeview.rerender(FileSystem.getTree())
+    }
+  })
+
+  Interface.on('renameFile', function (e) {
+    // call when gui delete directory
+    // 이벤트가 발생 한 file의 path로 fileSystem에서 file을 받아온다.
+    var filenode = e.file
+    // var filenode = FileSystem.getFileByPath(e.path)
+
+    // get new file/folder name
+    // 수정될 파일이나 폴더 이름을 받는다.
+    Interface.renameDialog(filenode.name, function (data) {
+      var success = false
+      if (filenode.type === util.DIRECTORY_TYPE) {
+        if (FileSystem.changeDirInfo(filenode.path, {name: data.newName})) success = true
+      } else {
+        if (FileSystem.changeFileInfo(filenode.path, {name: data.newName})) success = true
+      }
+      // TODO: rename 할때 열린 창을 유지하는 방법에 대해 생각해본다.
+      // 예를 들어 settimeout으로 100 tick 후에 getFileByContentID 해서 workingFile을 갱신하는 방법
+      // get이 안 나올 경우 창을 닫는다.
+      if (success) {
+        debug('rename filenode: ' + JSON.stringify(filenode))
+        self.netManager.renameFile(filenode.contentID, filenode.name)
+        Interface.treeview.rerender(FileSystem.getTree())
+      }
+    })
+  })
+
+  Interface.on('deleteDir', function (e) {
+    // call when gui delete directory
+    // 폴더 삭제 버튼을 클릭하면 호출한다.
+    var dir = e.file
+    // var dir = FileSystem.getFileByPath(e.path)
+    Interface.confirmDelete(dir.name, function () {
+      // confirm deleting directory
+      // 폴더 삭제 확인 모달 창을 띄우고 사용자가 확인하면 호출된다.
+      self.netManager.deleteFile(e.path)
+      FileSystem.getContained(e.path).forEach(function (node) {
+        FileSystem.delete(node.path)
+        // 폴더 내부 파일도 제거한다.
+      })
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+  })
+
+  Interface.on('deleteFile', function (e) {
+    var workingFile = e.file
+    // var workingFile = FileSystem.getFileByPath(e.path)
+    Interface.confirmDelete(workingFile.name, function () {
+      // Pane에 열려있으면 닫는다.
+      if (!e.path) return
+      var view = Interface.workspacePane.isOnPane(e.path)
+      if (view) Interface.workspacePane.closeView(view)
+      // 파일을 삭제한다.
+      var workingPath = workingFile.path
+      self.netManager.deleteFile(workingPath)
+      FileSystem.delete(workingPath)
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+  })
+
+  // url의 GET 인자와 옵션값을 받는다.
+  self.embed = util.getParameterByName('embed') || null
+  // embed 모드를 설정한다.
+  self.roomID = util.getParameterByName('room') || null
+  // 프로젝트 (룸)이름을 설정한다.
+  self.hostname = config.hostname
+
+// Originaly on Multihack, it show modal to write room id and user name, but we doesn't need it so I hide it.
+// 앱을 시작했을 때 모달창이 떠서 룸 id, user id 등을 고르는 부분이 있었는데 필요없어서 숨겼다.
+  Interface.hideOverlay()
+  if (self.embed) {
+    self._initRemote()
+  } else {
+    self._initRemote(function () {
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+  }
 }
 
 Multihack.prototype._initRemote = function (cb) {
-    var self = this
-    // This use multihack-core to control network and realtime document sync(CRDT).
-    // 네트워트 및 CRDT 협업 동기화 기능을 시작한다.
-    function onRoom(data) {
-        // overlaps funciton blocks to init room with conditional safety check.
-        // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키려고 함수를 2중으로 감쌌다.
-        self.roomID = data.room
-        Interface.setRoom(self.roomID)
-        // putting room id to gui
-        // 인터페이스에 룸 id를 삽입한다.
-        window.history.pushState('Multihack', lg('history_item', {
-            room: self.roomID
-        }), '?room=' + self.roomID + (self.embed ? '&embed=true' : ''))
-        // set new url with room id on browser.
-        // 룸 id에 맞춰 브라우저 주소창의 url을 고친다.
-        self.nickname = data.nickname
-        self._remote = new Remote({
-            hostname: self.hostname,
-            room: self.roomID,
-            nickname: self.nickname,
-            voice: Voice,
-            wrtc: null
-        })
-        // 네트워트 및 CRDT 협업 동기화 기능 모듈인 multihack-core를 시작한다.
+  var self = this
+  // This use multihack-core to control network and realtime document sync(CRDT).
+  // 네트워트 및 CRDT 협업 동기화 기능을 시작한다.
+  function onRoom (data) {
+    // overlaps funciton blocks to init room with conditional safety check.
+    // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키려고 함수를 2중으로 감쌌다.
+    self.roomID = data.room
+    Interface.setRoom(self.roomID)
+    // putting room id to gui
+    // 인터페이스에 룸 id를 삽입한다.
+    window.history.pushState('Multihack', lg('history_item', {
+      room: self.roomID
+    }), '?room=' + self.roomID + (self.embed ? '&embed=true' : ''))
+    // set new url with room id on browser.
+    // 룸 id에 맞춰 브라우저 주소창의 url을 고친다.
+    self.nickname = data.nickname
+    self.netManager = new Network({
+      hostname: self.hostname,
+      room: self.roomID,
+      nickname: self.nickname,
+      voice: Voice,
+      wrtc: null
+    })
+    // 네트워트 및 CRDT 협업 동기화 기능 모듈인 multihack-core를 시작한다.
 
-        self._remote.posFromIndex = function (filePath, index, cb) {
-            // tracking user's text cursor. cb is callback function.
-            // 사용자가 현재 편집중인 문서 상의 커서 위치를 추적한다. cb는 callback이다. cb에 등록한 함수에 에디터 커서 위치를 인자로 보낸다.
-            cb(FileSystem.getFile(filePath).cmdoc.posFromIndex(index))
-        }
+    document.getElementById('voice').style.display = 'none'
+    // 음성채팅 버튼을 보이게 한다.
+    document.getElementById('network').style.display = 'none'
+    // 접속한 사용자 보기 버튼을 보이게 한다.
+    document.getElementById('save').style.display = 'none'
 
-        self._remote.replyUpdate = function (filePath, replies, cb) {
-            // tracking pos of reply. Cause it changes when linebreaks.
-            // 현재 문서 상의 댓글 위치를 추적한다. 문서의 줄바꿈 상태가 수정되었을 때 댓글의 위치를 조정하려고 만들었다. cb는 callback이다.
-            cb(Reply.getLineChange(Reply.cm, replies))
-        }
+    // 음성 채팅 기능을 사용한다.
+    Interface.on('voiceToggle', function () {
+      self.netManager.voice.toggle()
+    })
+    Interface.on('showNetwork', function () {
+      Interface.showNetwork(self.netManager.peers, self.roomID, self.netManager.nop2p, self.netManager.mustForward)
+    })
 
-        document.getElementById('voice').style.display = 'none'
-        // 음성채팅 버튼을 보이게 한다.
-        document.getElementById('network').style.display = 'none'
-        // 접속한 사용자 보기 버튼을 보이게 한다.
-        document.getElementById('save').style.display = 'none'
+    self.netManager.on('createDir', function (data) {
+      // sync creation of directory.
+      // 협업 중인 다른 사용자가 폴더을 생성한 경우 동기화 한다.
+      FileSystem.getFileSync(data)
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+    self.netManager.on('createFile', function (data) {
+      // sync creation of file
+      // 협업 중인 다른 사용자가 파일을 생성한 경우 동기화 한다.
+      FileSystem.getFileSync(data)
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+    self.netManager.on('updateDir', function (data) {
+      // sync update of file meta data.
+      if (!FileSystem.changeDirInfoSync(data)) debug('couldn\'t change dir info sent by network: ' + JSON.stringify(data))
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+    self.netManager.on('updateFile', function (data) {
+      // sync update of file meta data.
+      if (!FileSystem.changeFileInfoSync(data)) debug('couldn\'t change file info sent by network: ' + JSON.stringify(data))
+      Interface.treeview.rerender(FileSystem.getTree())
+    })
+    self.netManager.on('deleteFile', function (data) {
+      // sync deletion of file.
+      // 협업 중인 다른 사용자가 파일을 지운 경우 동기화 한다.
+      if (FileSystem.existsByPath(data.path)) {
+        var view = Interface.workspacePane.isOnPane(data.filePath)
+        if (view) Interface.workspacePane.closeView(view)
+        FileSystem.delete(data.filePath)
+        Interface.treeview.rerender(FileSystem.getTree())
+      }
+    })
 
-        // 음성 채팅 기능을 사용한다.
-        Interface.on('voiceToggle', function () {
-            self._remote.voice.toggle()
-        })
-        Interface.on('showNetwork', function () {
-            Interface.showNetwork(self._remote.peers, self.roomID, self._remote.nop2p, self._remote.mustForward)
-        })
+    self.netManager.on('lostPeer', function (peer) {
+      // notify when other user disconnected.
+      // 협업중인 사용자가 나가면 알림을 띄운다.
+      if (self.embed) return
+      Interface.flashTooltip('tooltip-lostpeer', lg('lost_connection', {
+        nickname: peer.metadata.nickname
+      }))
+    })
 
-        self._remote.on('deleteFile', function (data) {
-            // sync deletion of file.
-            // 협업 중인 다른 사용자가 파일을 지운 경우 동기화 한다.
-            var parentElement = Interface.treeview.getParentElement(data.filePath)
-            var view = Interface.workspacePane.isOnPane(data.filePath)
-            if (view) Interface.workspacePane.closeView(view)
+    if (typeof cb !== 'undefined') cb()
+  }
 
-            if (parentElement) {
-                Interface.treeview.remove(parentElement, FileSystem.get(data.filePath))
-            }
-            FileSystem.delete(data.filePath)
-        })
-        self._remote.on('createFile', function (data) {
-            // sync creation of file
-            // 협업 중인 다른 사용자가 파일을 생성한 경우 동기화 한다.
-            FileSystem.getFile(data.filePath).content = data.content
-            Interface.treeview.rerender(FileSystem.getTree())
-        })
-        self._remote.on('createDir', function (data) {
-            // sync creation of directory.
-            // 협업 중인 다른 사용자가 폴더을 생성한 경우 동기화 한다.
-            FileSystem.mkdir(data.path)
-            Interface.treeview.rerender(FileSystem.getTree())
-        })
-        self._remote.on('lostPeer', function (peer) {
-            // notify when other user disconnected.
-            // 협업중인 사용자가 나가면 알림을 띄운다.
-            if (self.embed) return
-            Interface.flashTooltip('tooltip-lostpeer', lg('lost_connection', {
-                nickname: peer.metadata.nickname
-            }))
-        })
-        self._remote.on('changeReply', function (data) {
-            // sync change of reply.
-            // 협업 중인 사용자가 댓글을 달면 현재 사용자의 문서 에디터에 동기화한다.
-            // filePath, type, name, value, replies
-            if (data.type === 'insert') {
-                setTimeout(function () {
-                    for (var i = 0; i < data.replies.length; i++) {
-                        var reply = data.replies[i]
-                        debug('index.js _remote.on changeReply insert: ' + reply.get('reply_id') + ' on: ' + data.filePath);
-                        Reply.addReply({
-                            user_id: reply.get('user_id'),
-                            user_name: reply.get('user_name'),
-                            user_picture: reply.get('user_picture'),
-                            reply_id: reply.get('reply_id'),
-                            insert_time: reply.get('insert_time'),
-                            level: reply.get('level'),
-                            order: reply.get('order'),
-                            line_num: reply.get('line_num'),
-                            content: reply.get('content')
-                        })
-                    }
-                }, 50)
-            } else if (data.type === 'delete') {
-                for (var i = 0; i < data.replies.length; i++) {
-                    var reply = data.replies[i]
-                    Reply.removeReply({
-                        reply_id: reply.get('reply_id')
-                    })
-                }
-            } else if (data.type === 'update') {
-                // line_num updated on self._remote.replyUpdate
-                // TODO: update reply feature
-            }
-        })
-
-        if (typeof cb !== 'undefined') cb()
-    }
-
-    // Create room id if it doesn't have one.
-    // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키고 룸id가 있으면 해당 id로 네트워크를 실행시킨다.
-    // Random starting room (to be changed) or from query
-    if (!self.roomID && !self.embed) {
-        // Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
-        Interface.getRoom('rellat-otter-dev-v0.1', onRoom)
-        // } else if (!self.embed) {
-        //   Interface.getNickname(self.roomID, onRoom)
-    } else {
-        // Interface.embedMode()
-        onRoom({
-            room: self.roomID || 'rellat-otter-dev-v0.1', // Math.random().toString(36).substr(2),
-            nickname: User.user_id //lg('default_nickname')
-        })
-    }
+  // Create room id if it doesn't have one.
+  // 룸 id가 없을 때 룸 id를 생성해서 네트워크를 실행시키고 룸id가 있으면 해당 id로 네트워크를 실행시킨다.
+  // Random starting room (to be changed) or from query
+  if (!self.roomID && !self.embed) {
+    // Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
+    Interface.getRoom('rellat-otter-dev-v0.1', onRoom)
+    // } else if (!self.embed) {
+    //   Interface.getNickname(self.roomID, onRoom)
+  } else {
+    // Interface.embedMode()
+    onRoom({
+      room: self.roomID || 'rellat-otter-dev-v0.1', // Math.random().toString(36).substr(2),
+      nickname: User.user_id // lg('default_nickname')
+    })
+  }
 }
 
 module.exports = Multihack
 
-},{"./auth/user":440,"./editor/codeeditor":441,"./editor/doceditor":442,"./editor/htmlviewer":443,"./editor/reply":444,"./filesystem/filesystem":447,"./filesystem/util":448,"./interface/interface":451,"./interface/lang/lang":452,"./network/hyperhostwrapper":460,"./network/multihack-core":461,"./network/voice":462,"debug":339}],450:[function(require,module,exports){
+},{"./auth/user":440,"./editor/codeeditor":441,"./editor/doceditor":442,"./editor/htmlviewer":443,"./editor/reply":444,"./filesystem/filesystem":447,"./filesystem/util":448,"./interface/interface":451,"./interface/lang/lang":452,"./network/network":460,"./network/voice":461,"debug":339}],450:[function(require,module,exports){
 function DropdownMenu() {
     var self = this;
     if (!(this instanceof DropdownMenu)) return new DropdownMenu();
@@ -44568,339 +44313,335 @@ var PeerGraph = require('p2p-graph')
 var cuid = require('cuid')
 var PaneManager = require('./panemanager')
 var lang = require('./lang/lang')
-var split = require('split.js')
+// var split = require('split.js')
 var lg = lang.get.bind(lang)
 
 inherits(Interface, EventEmitter)
 
-function Interface() {
-    var self = this
-    if (!(self instanceof Interface)) return new Interface()
+function Interface () {
+  var self = this
+  if (!(self instanceof Interface)) return new Interface()
 
-    self.treeview = new TreeView()
+  self.treeview = new TreeView()
 
-    self.treeview.on('open', function (e) {
-        self.emit('openFile', e);
-    });
+  self.treeview.on('open', function (e) {
+    self.emit('openFile', e)
+  })
 
-    self.treeview.on('removeDir', function (e) {
-        self.emit('removeDir', e);
-    });
-    
-    self.treeview.on('deleteFile', function (e) {
-        self.emit('deleteFile', e);
-    });
+  self.treeview.on('removeDir', function (e) {
+    self.emit('deleteDir', e)
+  })
 
-    self.treeview.on('renameDir', function (e) {
-        self.emit('renameDir', e);
-    });
+  self.treeview.on('deleteFile', function (e) {
+    self.emit('deleteFile', e)
+  })
 
-    self.addCounter = 1
-    self.treeview.on('add', function (e) {
-        self.newFileDialog(e.path, function (name, type) {
-            e.path = e.path + '/' + name
-            if (type === 'dir') {
-                self.emit('addDir', e)
-            } else {
-                self.emit('addFile', e)
-            }
-        })
+  self.treeview.on('renameFile', function (e) {
+    self.emit('renameFile', e)
+  })
+
+  self.addCounter = 1
+  self.treeview.on('add', function (e) {
+    self.newFileDialog(e.path, function (name, type) {
+      e.path = e.path + '/' + name
+      if (type === 'dir') {
+        self.emit('addDir', e)
+      } else {
+        self.emit('addFile', e)
+      }
     })
+  })
 
-    // Setup sidebar
-    var sidebar = document.getElementById('sidebar')
-    self.collapsed = false
-    document.getElementById('collapsesidebar').addEventListener('click', function () {
-        self.collapsed = !self.collapsed
-        if (self.collapsed) {
-            sidebar.className = sidebar.className + ' collapsed'
-        } else {
-            sidebar.className = sidebar.className.replace('collapsed', '')
-        }
-    })
+  // Setup sidebar
+  var sidebar = document.getElementById('sidebar')
+  self.collapsed = false
+  document.getElementById('collapsesidebar').addEventListener('click', function () {
+    self.collapsed = !self.collapsed
+    if (self.collapsed) {
+      sidebar.className = sidebar.className + ' collapsed'
+    } else {
+      sidebar.className = sidebar.className.replace('collapsed', '')
+    }
+  })
 
-    // Setup contrast toggle
-    // var contrast = false
-    // document.getElementById('image-contrast').addEventListener('click', function () {
-    //   contrast = !contrast
-    //   document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
-    //   document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
-    // })
+  // Setup contrast toggle
+  // var contrast = false
+  // document.getElementById('image-contrast').addEventListener('click', function () {
+  //   contrast = !contrast
+  //   document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
+  //   document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
+  // })
 
-    // Setup save button
-    document.getElementById('save').addEventListener('click', function () {
-        self.emit('saveAs', 'zip')
-    })
+  // Setup save button
+  document.getElementById('save').addEventListener('click', function () {
+    self.emit('saveAs', 'zip')
+  })
 
-    // Setup voice button
-    document.getElementById('voice').addEventListener('click', function () {
-        self.emit('voiceToggle')
-    })
+  // Setup voice button
+  document.getElementById('voice').addEventListener('click', function () {
+    self.emit('voiceToggle')
+  })
 
-    // Setup deploy button
-    document.getElementById('deploy').addEventListener('click', function () {
-        self.emit('deploy')
-    })
+  // Setup deploy button
+  document.getElementById('deploy').addEventListener('click', function () {
+    self.emit('deploy')
+  })
 
-    // Network button
-    document.getElementById('network').addEventListener('click', function () {
-        self.emit('showNetwork')
-    })
+  // Network button
+  document.getElementById('network').addEventListener('click', function () {
+    self.emit('showNetwork')
+  })
 
-    // Setup delete button
-    // document.getElementById('delete').addEventListener('click', function () {
-    //   self.emit('deleteCurrent')
-    // })
+  // Setup delete button
+  // document.getElementById('delete').addEventListener('click', function () {
+  //   self.emit('deleteCurrent')
+  // })
 
-    self.workspacePane = new PaneManager({
-        container: document.getElementById('main-workspace')
-    })
+  self.workspacePane = new PaneManager({
+    container: document.getElementById('main-workspace')
+  })
 
-    // split(["#sidebar", "#main-workspace"], { // 재대로 안된다.
-    //   gutterSize: 4,
-    //   cursor: "col-resize"
-    // })
+  // split(["#sidebar", "#main-workspace"], { // 재대로 안된다.
+  //   gutterSize: 4,
+  //   cursor: "col-resize"
+  // })
 }
 
 Interface.prototype.newFileDialog = function (path, cb) {
-    var self = this
+  // var self = this
 
-    var modal = new Modal('newFile', {
-        title: lg('create_title'),
-        path: path
-    })
+  var modal = new Modal('newFile', {
+    title: lg('create_title'),
+    path: path
+  })
 
-    modal.on('done', function (e) {
-        modal.close()
-        var name = e.inputs[0].value
-        var type = e.target.dataset.type
-        if (!name) {
-            name = (type === 'dir' ? lg('new_folder') : lg('new_file')) + '-' + cuid().slice(-7, -1)
-        }
-        if (cb) cb(name, type)
-    })
-    modal.on('cancel', function () {
-        modal.close()
-    })
-    modal.open()
+  modal.on('done', function (e) {
+    modal.close()
+    var name = e.inputs[0].value
+    var type = e.target.dataset.type
+    if (!name) {
+      name = (type === 'dir' ? lg('new_folder') : lg('new_file')) + '-' + cuid().slice(-7, -1)
+    }
+    if (cb) cb(name, type)
+  })
+  modal.on('cancel', function () {
+    modal.close()
+  })
+  modal.open()
 }
 
 Interface.prototype.confirmDelete = function (fileName, cb) {
-    var modal = new Modal('confirm-delete', {
-        fileName: fileName
-    })
+  var modal = new Modal('confirm-delete', {
+    fileName: fileName
+  })
 
-    modal.on('done', function (e) {
-        modal.close()
-        if (cb) cb(true)
-    })
-    modal.on('cancel', function () {
-        modal.close()
-    })
-    modal.open()
-};
+  modal.on('done', function (e) {
+    modal.close()
+    if (cb) cb(true)
+  })
+  modal.on('cancel', function () {
+    modal.close()
+  })
+  modal.open()
+}
 
 Interface.prototype.renameDialog = function (fileName, cb) {
-    var modal = new Modal('rename', {
-        title: lg('rename'),
-        placeholder: fileName,
-        default: fileName
-    })
+  var modal = new Modal('rename', {
+    title: lg('rename'),
+    placeholder: fileName,
+    default: fileName
+  })
 
-    modal.on('done', function (e) {
-        modal.close()
-        if (cb) cb({
-            newName: e.inputs[0].value
-        })
-    })
-    modal.on('cancel', function () {
-        modal.close()
-    })
-    modal.open()
-};
+  modal.on('done', function (e) {
+    modal.close()
+    if (cb) cb({newName: e.inputs[0].value})
+  })
+  modal.on('cancel', function () {
+    modal.close()
+  })
+  modal.open()
+}
 
 Interface.prototype.getProject = function (cb) {
-    // var self = this
+  // var self = this
 
-    var projectModal = new Modal('file', {
-        title: lg('load_title'),
-        message: lg('load_prompt')
-    })
-    projectModal.on('cancel', function () {
-        projectModal.close()
-        if (cb) cb(null)
-    })
-    projectModal.open()
+  var projectModal = new Modal('file', {
+    title: lg('load_title'),
+    message: lg('load_prompt')
+  })
+  projectModal.on('cancel', function () {
+    projectModal.close()
+    if (cb) cb(null)
+  })
+  projectModal.open()
 
-    var input = projectModal.el.querySelector('input[type="file"]')
-    projectModal.el.querySelector('#file-button').addEventListener('click', function () {
-        input.click()
-    })
-    input.addEventListener('change', function () {
-        projectModal.close()
-        cb(input.files[0])
-    })
+  var input = projectModal.el.querySelector('input[type="file"]')
+  projectModal.el.querySelector('#file-button').addEventListener('click', function () {
+    input.click()
+  })
+  input.addEventListener('change', function () {
+    projectModal.close()
+    cb(input.files[0])
+  })
 }
 
 Interface.prototype.getRoom = function (roomID, cb) {
-    var self = this
+  var self = this
 
-    var roomModal = new Modal('input', {
-        title: lg('choose_room_title'),
-        message: lg('choose_room_prompt'),
-        placeholder: lg('room_placeholder'),
-        default: roomID
-    })
-    roomModal.on('done', function (e) {
-        roomModal.close()
-        // self.getNickname(e.inputs[0].value, cb)
+  var roomModal = new Modal('input', {
+    title: lg('choose_room_title'),
+    message: lg('choose_room_prompt'),
+    placeholder: lg('room_placeholder'),
+    default: roomID
+  })
+  roomModal.on('done', function (e) {
+    roomModal.close()
+    // self.getNickname(e.inputs[0].value, cb)
 
-        if (cb) cb({
-            room: e.inputs[0].value
-            // nickname: e.inputs[0].value
-        })
-    })
-    roomModal.on('cancel', function () {
-        roomModal.close()
-        self.alertHTML(lg('offline_title'), lg('offline_alert'))
-    })
-    roomModal.open()
+    if (cb) cb({room: e.inputs[0].value})
+  })
+  roomModal.on('cancel', function () {
+    roomModal.close()
+    self.alertHTML(lg('offline_title'), lg('offline_alert'))
+  })
+  roomModal.open()
 }
 
 Interface.prototype.getNickname = function (room, cb) {
-    var self = this
+  // var self = this
 
-    var modal = new Modal('force-input', {
-        title: lg('nickname_prompt_title'),
-        message: lg('nickname_prompt'),
-        placeholder: lg('nickname_placeholder'),
-        default: ''
-    })
-    modal.on('done', function (e) {
-        modal.close()
-        if (cb) cb({
-            room: room,
-            nickname: e.inputs[0].value
-        })
-    })
-    modal.open()
+  var modal = new Modal('force-input', {
+    title: lg('nickname_prompt_title'),
+    message: lg('nickname_prompt'),
+    placeholder: lg('nickname_placeholder'),
+    default: ''
+  })
+  modal.on('done', function (e) {
+    modal.close()
+    if (cb) {
+      cb({
+        room: room,
+        nickname: e.inputs[0].value
+      })
+    }
+  })
+  modal.open()
 }
 
 Interface.prototype.alert = function (title, message, cb) {
-    var alertModal = new Modal('alert', {
-        title: title,
-        message: message
-    })
-    alertModal.on('done', function (e) {
-        alertModal.close()
-        if (cb) cb()
-    })
-    alertModal.open()
+  var alertModal = new Modal('alert', {
+    title: title,
+    message: message
+  })
+  alertModal.on('done', function (e) {
+    alertModal.close()
+    if (cb) cb()
+  })
+  alertModal.open()
 }
 
 Interface.prototype.flashTooltip = function (id, message) {
-    var tooltip = document.getElementById(id)
-    var span = tooltip.querySelector('span')
+  var tooltip = document.getElementById(id)
+  var span = tooltip.querySelector('span')
 
-    span.innerHTML = message
-    tooltip.style.opacity = 1
-    tooltip.style.display = ''
+  span.innerHTML = message
+  tooltip.style.opacity = 1
+  tooltip.style.display = ''
 
+  setTimeout(function () {
+    tooltip.style.opacity = 0
     setTimeout(function () {
-        tooltip.style.opacity = 0
-        setTimeout(function () {
-            tooltip.style.display = ''
-        }, 300)
-    }, 3000)
+      tooltip.style.display = ''
+    }, 300)
+  }, 3000)
 }
 
 Interface.prototype.alertHTML = function (title, message, cb) {
-    var alertModal = new Modal('alert-html', {
-        title: title,
-        message: message
-    })
-    alertModal.on('done', function (e) {
-        alertModal.close()
-        if (cb) cb()
-    })
-    alertModal.open()
+  var alertModal = new Modal('alert-html', {
+    title: title,
+    message: message
+  })
+  alertModal.on('done', function (e) {
+    alertModal.close()
+    if (cb) cb()
+  })
+  alertModal.open()
 }
 
 Interface.prototype.embedMode = function () {
-    var self = this
+  var self = this
 
-    self.collapsed = true
-    document.querySelector('body').className += ' embed'
-    document.querySelector('#sidebar').className = 'sidebar theme-light collapsed'
+  self.collapsed = true
+  document.querySelector('body').className += ' embed'
+  document.querySelector('#sidebar').className = 'sidebar theme-light collapsed'
 }
 
 Interface.prototype.setRoom = function (roomID) {
-    document.querySelector('#room').innerHTML = roomID
+  document.querySelector('#room').innerHTML = roomID
 }
 
 Interface.prototype.showNetwork = function (peers, room, nop2p, mustForward) {
+  var modal = new Modal('network', {
+    room: room
+  })
 
-    var modal = new Modal('network', {
-        room: room
-    })
+  modal.on('cancel', function () {
+    modal.close()
+  })
 
-    modal.on('cancel', function () {
-        modal.close()
-    })
+  modal.open()
 
-    modal.open()
+  var el = document.querySelector('#network-graph')
+  el.style.overflow = 'hidden'
+  var graph = new PeerGraph(el)
 
-    var el = document.querySelector('#network-graph')
-    el.style.overflow = 'hidden'
-    var graph = new PeerGraph(el)
+  graph.add({
+    id: 'Me',
+    me: true,
+    name: lg('you')
+  })
 
+  var proxyID = nop2p ? 'Server' : 'Me'
+
+  if (mustForward || nop2p) {
     graph.add({
-        id: 'Me',
-        me: true,
-        name: lg('you')
+      id: 'Server',
+      me: false,
+      name: lg('server')
     })
+    graph.connect('Server', 'Me')
+  }
 
-    var proxyID = nop2p ? 'Server' : 'Me'
-
-    if (mustForward || nop2p) {
-        graph.add({
-            id: 'Server',
-            me: false,
-            name: lg('server')
-        })
-        graph.connect('Server', 'Me')
-    }
-
-    for (var i = 0; i < peers.length; i++) {
-        graph.add({
-            id: peers[i].id,
-            me: false,
-            name: peers[i].metadata.nickname
-        })
-        if (peers[i].nop2p) {
-            graph.connect('Server', peers[i].id)
-        } else {
-            graph.connect(proxyID, peers[i].id)
-        }
-    }
-
-    modal.on('done', function (e) {
-        graph.destroy()
+  for (var i = 0; i < peers.length; i++) {
+    graph.add({
+      id: peers[i].id,
+      me: false,
+      name: peers[i].metadata.nickname
     })
+    if (peers[i].nop2p) {
+      graph.connect('Server', peers[i].id)
+    } else {
+      graph.connect(proxyID, peers[i].id)
+    }
+  }
+
+  modal.on('done', function (e) {
+    graph.destroy()
+  })
 }
 
 Interface.prototype.hideOverlay = function (msg, cb) {
-    document.getElementById('overlay').style.display = 'none'
-    document.getElementById('modal').style.display = 'none'
+  document.getElementById('overlay').style.display = 'none'
+  document.getElementById('modal').style.display = 'none'
 }
 
 Interface.prototype.showOverlay = function (msg, cb) {
-    document.getElementById('overlay').style.display = ''
+  document.getElementById('overlay').style.display = ''
 }
 
 module.exports = new Interface()
 
-},{"./lang/lang":452,"./modal":454,"./panemanager":455,"./treeview":459,"cuid":337,"events":354,"inherits":363,"p2p-graph":372,"split.js":406}],452:[function(require,module,exports){
+},{"./lang/lang":452,"./modal":454,"./panemanager":455,"./treeview":459,"cuid":337,"events":354,"inherits":363,"p2p-graph":372}],452:[function(require,module,exports){
 var translations = require('./translations')
 
 var mustache = require('mustache')
@@ -45135,20 +44876,20 @@ function PaneManager (options) {
   var self = this
   if (!(self instanceof PaneManager)) return new PaneManager(options)
   self.container = options.container
-  if(!self.container) throw Error("Panemanager: can not start without container!")
-  
+  if (!self.container) throw Error('Panemanager: can not start without container!')
+
   // create main pane
   var mainpane = document.createElement('div')
   mainpane.className = 'pane'
 
   self.mainPaneHolder = {
-    type: 'paneHolder', 
-    dom: self.container, 
-    splitation: 'vertical', 
+    type: 'paneHolder',
+    dom: self.container,
+    splitation: 'vertical',
     panelist: [{
-      type: 'pane', 
-      dom: mainpane, 
-      showidx: 0, 
+      type: 'pane',
+      dom: mainpane,
+      showidx: 0,
       tabcontainer: null,
       viewlist: [] // tab으로 관리한다.
     }]
@@ -45163,16 +44904,16 @@ function PaneManager (options) {
   self._currentview = null
 
   // create start dummy view
-  self.addView('Welcome!',new HtmlViewer({content:
+  self.addView('Welcome!', new HtmlViewer({content:
     '<div class="welcome-view">' +
-    '<h1>Rellat</h1>' + 
+    '<h1>Rellat</h1>' +
     '<span>The Simultaneous Collaboration Coding service to show people how to make code in real time.</span>' +
     '<br><br><span>Supported File Types</span>' +
-    '<ul><li>CodeMirror code editor : js, coffee, ts, json, css, sass, less, html, xml, py, php, md</li>'+
-    '<li>Quill.js rich text editor : quill</li>'+
-    '<li>Image viewer - in progress </li>'+
-    '<li>unsupported file type will be ignored</li>'+
-    '</ul>'+    
+    '<ul><li>CodeMirror code editor : js, coffee, ts, json, css, sass, less, html, xml, py, php, md</li>' +
+    '<li>Quill.js rich text editor : quill</li>' +
+    '<li>Image viewer - in progress </li>' +
+    '<li>unsupported file type will be ignored</li>' +
+    '</ul>' +
     '</div>'
   }))
 
@@ -45184,7 +44925,6 @@ function PaneManager (options) {
   })
 
   self.container.appendChild(self.focusedPane.dom)
-
 }
 // PaneManager.prototype.addPane = function (pane, splitation) {
 //   var self = this
@@ -45193,27 +44933,27 @@ PaneManager.prototype.isOnPane = function (filepath) {
   var self = this
   // view가 focusedPane에 이미 추가되어 있는지 확인하기
   var checkview = false
-  self.focusedPane.viewlist.forEach(function(view) {
-    console.log('check file exist: '+ filepath + ' ' + view.getWorkingFile().path)
-    if(view.getWorkingFile().path == filepath) { checkview = view }
-  }, this);
+  self.focusedPane.viewlist.forEach(function (view) {
+    // console.log('check file exist: ' + filepath + ' ' + view.getWorkingFile().path)
+    if (view.getWorkingFile().path === filepath) { checkview = view }
+  }, this)
   return checkview
 }
 PaneManager.prototype.addView = function (title, view) {
   var self = this
   var lastView = self.focusedPane.dom.querySelector('.editor-view.active')
   if (lastView) {
-    lastView.className = lastView.className.replace(" active", "")
+    lastView.className = lastView.className.replace(' active', '')
     self._lastview = self._currentview
   }
 
   var showidx = self.focusedPane.viewlist.push(view) - 1
   self.focusedPane.showidx = showidx
-  self.focusedPane.viewlist[showidx].container.className += " active"
+  self.focusedPane.viewlist[showidx].container.className += ' active'
   self.focusedPane.dom.appendChild(self.focusedPane.viewlist[showidx].container)
   self._currentview = view
 
-  //add tab button
+  // add tab button
   var newtab = self.focusedPane.tabcontainer.newTab(title, self.focusedPane.viewlist[showidx])
   self.focusedPane.viewlist[showidx].bindTab(newtab)
 }
@@ -45224,33 +44964,33 @@ PaneManager.prototype.changeView = function (view) {
 
   var lastView = self.focusedPane.dom.querySelector('.editor-view.active')
   if (lastView) {
-    lastView.className = lastView.className.replace(" active", "")
+    lastView.className = lastView.className.replace(' active', '')
     self._lastview = self._currentview
   }
   var lastTab = self.focusedPane.tabcontainer.dom.querySelector('.tab.active')
-  if (lastTab) lastTab.className = lastTab.className.replace(" active", "")
+  if (lastTab) lastTab.className = lastTab.className.replace(' active', '')
 
-  tempview.container.className += " active"
+  tempview.container.className += ' active'
   tempview.bindedTab.setActive()
-  self._currentview = view  
+  self._currentview = view
 
-  self.emit('viewChange',{view:view})
+  self.emit('viewChange', {view: view})
 }
 PaneManager.prototype.closeView = function (view) {
   var self = this
-  if(self.focusedPane.viewlist.indexOf(view) !== -1) {
+  if (self.focusedPane.viewlist.indexOf(view) !== -1) {
     var tempview = self.focusedPane.viewlist[self.focusedPane.viewlist.indexOf(view)]
     self.focusedPane.dom.removeChild(tempview.container)
-    self.focusedPane.viewlist.splice(self.focusedPane.viewlist.indexOf(view),1)
+    self.focusedPane.viewlist.splice(self.focusedPane.viewlist.indexOf(view), 1)
     view.close()
     // observe, bind 풀기
     // editer close, distroy
-    self.emit('closeview',{view: view})
+    self.emit('closeview', {view: view})
     // switch vew
-    if(self._lastview && self._lastview !== view) {
+    if (self._lastview && self._lastview !== view) {
       self.changeView(self._lastview)
-    }else if(self.focusedPane.viewlist[self.focusedPane.viewlist.length - 1]) {
-      console.log('nnn2 ')      
+    } else if (self.focusedPane.viewlist[self.focusedPane.viewlist.length - 1]) {
+      console.log('nnn2 ')
       self.changeView(self.focusedPane.viewlist[self.focusedPane.viewlist.length - 1])
     }
   }
@@ -45462,264 +45202,183 @@ module.exports = dict
 },{"./lang/lang":452}],459:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
-var DropdownMenu = require('./DropdownMenu');
+var DropdownMenu = require('./DropdownMenu')
+var util = require('../filesystem/util')
 
 inherits(TreeView, EventEmitter)
 
-function TreeView() {
-    var self = this
-    if (!(self instanceof TreeView)) return new TreeView()
+function TreeView () {
+  var self = this
+  if (!(self instanceof TreeView)) return new TreeView()
 
-    self.dropdown = new DropdownMenu();
+  self.dropdown = new DropdownMenu()
 
-    document.getElementById('root-plus').addEventListener('click', function (e) {
-        self.emit('add', {
-            target: null,
-            path: '',
-            parentElement: document.querySelector('#tree')
-        })
+  document.getElementById('root-plus').addEventListener('click', function (e) {
+    self.emit('add', {
+      target: null,
+      path: '@',
+      parentElement: document.querySelector('#tree')
     })
+  })
 };
 
 TreeView.prototype.render = function (nodeList, parentElement) {
-    var self = this;
+  var self = this
 
-    parentElement = parentElement || document.querySelector('#tree')
+  parentElement = parentElement || document.querySelector('#tree')
 
-    while (parentElement.firstChild) {
+  while (parentElement.firstChild) {
+    parentElement.removeChild(parentElement.firstChild)
+  }
 
-        parentElement.removeChild(parentElement.firstChild);
-    }
-
-    for (var i = 0; i < nodeList.length; i++) {
-        if (nodeList[i].path === '') continue
-        self.add(parentElement, nodeList[i])
-    }
-};
-
-TreeView.prototype.renameDir = function (nodeList) {
-    var self = this;
-
-   self.rerender(nodeList);
-};
-
-TreeView.prototype.renameChildren = function (parentElement,file) {
-    var self = this;
-
-    self.add(parentElement,file);
-
-    if(file.isDir){
-        file.nodes.forEach(function(ele){
-            var dirElement = document.getElementById(file.path);
-            self.renameChildren(dirElement.parentElement,ele);
-        })
-    }
-
+  for (var i = 0; i < nodeList.length; i++) {
+    if (nodeList[i].path === '') continue
+    self.add(parentElement, nodeList[i])
+  }
 }
-
 
 TreeView.prototype.rerender = function (nodeList) {
-    var self = this
+  var self = this
 
-    var rootElement = document.querySelector('#tree')
-    while (rootElement.firstChild) {
-        rootElement.removeChild(rootElement.firstChild)
-    }
+  var rootElement = document.querySelector('#tree')
+  while (rootElement.firstChild) {
+    rootElement.removeChild(rootElement.firstChild)
+  }
 
-    self.render(nodeList)
-}
-
-TreeView.prototype._handleFileClick = function (e) {
-    var self = this
-    self.emit('open', {
-        target: e.target,
-        path: e.target.id,
-        parentElement: e.parentElement
-    })
-}
-
-TreeView.prototype._handleFolderClick = function (e) {
-    // var self = this
-    // Nothing
+  self.render(nodeList)
 }
 
 // Returns parentElement of node if it already exists
 TreeView.prototype.getParentElement = function (path) {
-    // var self = this
-    var el = document.getElementById(path)
-    return el ? el.parentElement.parentElement : null
+  // var self = this
+  var el = document.getElementById(path)
+  return el ? el.parentElement.parentElement : null
 }
 
 TreeView.prototype.remove = function (parentElement, file) {
-    // var self = this
+  // var self = this
 
-    var element = document.getElementById(file.path).parentElement
-    parentElement.removeChild(element)
+  var element = document.getElementById(file.path).parentElement
+  parentElement.removeChild(element)
 }
-/////////////////////////////----------------
-// 파일이든 폴더이든 동작은 같다.
-/*
-TreeView.prototype.rename = function (oldId, newId, children) {
-    var self = this
 
-    var element = document.getElementById(oldId);
-    element.id = newId;
-    element.childNodes[1].id.replace(oldId, newId);
-}
-*/
 TreeView.prototype.add = function (parentElement, file) {
-    var self = this
+  var self = this
 
-    if (file.isDir) {
-        self.addDir(parentElement, file)
-    } else {
-        self.addFile(parentElement, file)
-    }
+  if (file.type === util.DIRECTORY_TYPE) {
+    self.addDir(parentElement, file)
+  } else {
+    self.addFile(parentElement, file)
+  }
 }
 
 TreeView.prototype.addFile = function (parentElement, file) {
-    var self = this
+  var self = this
 
-    // Render file
-    var el = document.createElement('li')
-    el.className = 'file'
+  // Render file
+  var el = document.createElement('li')
+  el.className = 'file'
 
-    var a = document.createElement('a')
-    a.className = 'filelink'
-    a.id = file.path
-    a.innerHTML = file.name
-    a.addEventListener('click', function (e) {
-        self.emit('open', {
-            target: e.target,
-            path: file.path,
-            parentElement: parentElement
-        })
+  var a = document.createElement('a')
+  a.className = 'filelink'
+  a.id = file.path
+  a.innerHTML = file.name
+  a.addEventListener('click', function (e) {
+    self.emit('open', {
+      target: e.target,
+      path: file.path,
+      file: file,
+      parentElement: parentElement
     })
+  })
 
+  self.dropdown.makeDropdownButton(a)
+  self.dropdown.addMenu(a.id, 'Rename', function (e) {
+    e.stopPropagation()
+    self.emit('renameFile', {
+      target: e.target,
+      path: file.path,
+      file: file,
+      childElement: el
+    })
+  })
+  self.dropdown.addMenu(a.id, 'Delete', function (e) {
+    e.stopPropagation()
+    self.emit('deleteFile', {
+      target: e.target,
+      path: file.path,
+      file: file,
+      parentElement: parentElement
+    })
+  })
 
-    self.dropdown.makeDropdownButton(a);
-    self.dropdown.addMenu(a.id, 'Rename', function (e) {
-        e.stopPropagation();
-        console.log('하하 되지롱1~');
-    });
-    self.dropdown.addMenu(a.id, 'Delete', function (e) {
-        e.stopPropagation();
-        self.emit('deleteFile', {
-            target: e.target,
-            path: file.path,
-            parentElement: parentElement
-        });
-    });
-
-    el.appendChild(a)
-    parentElement.appendChild(el)
+  el.appendChild(a)
+  parentElement.appendChild(el)
 }
 
 TreeView.prototype.addDir = function (parentElement, file) {
-    var self = this
+  var self = this
 
-    var el = document.createElement('li')
+  var el = document.createElement('li')
 
-    var label = document.createElement('label')
-    //label.setAttribute('for', file.path)
-    label.id = file.path
-    label.innerHTML = file.name
-    label.addEventListener('click', self._handleFolderClick.bind(self))
+  var label = document.createElement('label')
+  // label.setAttribute('for', file.path)
+  label.id = file.path
+  label.innerHTML = file.name
+  // label.addEventListener('click', self._handleFolderClick.bind(self))
 
-    var input = document.createElement('input')
-    input.id = file.path
-    input.checked = true
-    input.type = 'checkbox'
+  var input = document.createElement('input')
+  input.id = file.path
+  input.checked = true
+  input.type = 'checkbox'
 
-    var ol = document.createElement('ol')
-    self.render(file.nodes, ol)
+  var ol = document.createElement('ol')
+  self.render(file.nodes, ol)
 
-    self.dropdown.makeDropdownButton(label);
-    self.dropdown.addMenu(label.id, 'add', function (e) {
-        e.stopPropagation();
-        self.emit('add', {
-            target: null,
-            path: file.path,
-            parentElement: ol
-        })
-    });
-    self.dropdown.addMenu(label.id, 'Rename', function (e) {
-        e.stopPropagation();
-        self.emit('renameDir', {
-            target: e.target,
-            path: file.path,
-            childElement: el
-        });
-    });
-    self.dropdown.addMenu(label.id, 'Delete', function (e) {
-        e.stopPropagation();
-        self.emit('removeDir', {
-            target: e.target,
-            path: file.path,
-            parentElement: parentElement
-        });
-    });
+  self.dropdown.makeDropdownButton(label)
+  self.dropdown.addMenu(label.id, 'add', function (e) {
+    e.stopPropagation()
+    self.emit('add', {
+      target: null,
+      path: file.path,
+      file: file,
+      parentElement: ol
+    })
+  })
+  self.dropdown.addMenu(label.id, 'Rename', function (e) {
+    e.stopPropagation()
+    self.emit('renameFile', {
+      target: e.target,
+      path: file.path,
+      file: file,
+      childElement: el
+    })
+  })
+  self.dropdown.addMenu(label.id, 'Delete', function (e) {
+    e.stopPropagation()
+    self.emit('deleteDir', {
+      target: e.target,
+      path: file.path,
+      file: file,
+      parentElement: parentElement
+    })
+  })
 
-    el.appendChild(label)
-    el.appendChild(input)
-    el.appendChild(ol)
-    parentElement.appendChild(el)
+  el.appendChild(label)
+  el.appendChild(input)
+  el.appendChild(ol)
+  parentElement.appendChild(el)
 }
 
 module.exports = TreeView
 
-},{"./DropdownMenu":450,"events":354,"inherits":363}],460:[function(require,module,exports){
-/* globals HyperHost */
-
-// Wraps the HyperHost instance
-// TODO: When HyperHost uses simple-signal, make child of remote.js
-
-var EventEmitter = require('events').EventEmitter
-var inherits = require('inherits')
-
-inherits(HyperHostWrapper, EventEmitter)
-
-function HyperHostWrapper () {
-  var self = this
-  if (!(self instanceof HyperHostWrapper)) return new HyperHostWrapper()
-
-  self._host = new HyperHost()
-}
-
-HyperHostWrapper.prototype.deploy = function (tree) {
-  var self = this
-  console.log('HH started')
-
-  self._host.on('ready', function (url) {
-    console.log('HH ready')
-    self.emit('ready', url)
-  })
-
-  self._host.io.on('digest', function () {
-    console.log('HH digested')
-    self._host.launch()
-  })
-
-  console.log(tree)
-  try {
-    self._host.io.contentTree(tree) // TODO: Don't try/catch when HH supports "error" event
-  } catch (err) {
-    console.error(err)
-    self.emit('error', err)
-  }
-}
-
-module.exports = new HyperHostWrapper()
-
-},{"events":354,"inherits":363}],461:[function(require,module,exports){
+},{"../filesystem/util":448,"./DropdownMenu":450,"events":354,"inherits":363}],460:[function(require,module,exports){
 var debug = require('debug')('MH:core')
 
 var Y = require('yjs')
 require('y-memory')(Y)
 require('y-array')(Y)
 require('y-map')(Y)
-// require('../../../../y-map')(Y)
-// require('./websockets-client')(Y)
 require('./y-multihack')(Y)
 require('y-text')(Y)
 require('y-richtext')(Y)
@@ -45729,9 +45388,9 @@ var inherits = require('inherits')
 var util = require('../filesystem/util')
 var Voice
 
-inherits(RemoteManager, EventEmitter)
+inherits(NetworkManager, EventEmitter)
 
-function RemoteManager (opts) {
+function NetworkManager (opts) {
   var self = this
 
   opts = opts || {}
@@ -45741,20 +45400,15 @@ function RemoteManager (opts) {
   self.hostname = opts.hostname || 'http://localhost:8080'
   self.nickname = opts.nickname || 'Guest'
   self.id = null
-  self.yfs = null
+  self.yFSIndex = null
+  self.yFSNodes = null
   self.ySelections = null
-  self.posFromIndex = function (filePath, index, cb) {
-    throw Error('No "remote.posFromIndex" provided. Unable to apply change!')
-  }
   self.client = null
   self.voice = null
   self.peers = []
   self.lastSelection = null
-  self.replyUpdate = function (filePath, replies, cb) {
-    throw Error('No "remote.replyUpdate" provided. Unable to apply change!')
-  }
   self.replyLazyUpdate = null
-  self.bindedObservers = {}
+  self.observedInstances = {}
 
   var tokens = {}
   self.mutualExcluse = function (key, f) {
@@ -45770,7 +45424,7 @@ function RemoteManager (opts) {
     }
   }
   self.onceReady = function (f) {
-    if (!self.yfs) {
+    if (!self.yFSIndex) {
       self.once('ready', function () {
         f()
       })
@@ -45810,21 +45464,27 @@ function RemoteManager (opts) {
     },
     share: {
       selections: 'Array',
-      dir_tree: 'Map'
+      filesystem_index: 'Map',
+      filesystem_nodes: 'Map'
     }
   }).then(function (y) {
     self.y = y
-    self.yfs = y.share.dir_tree
+    self.yFSIndex = y.share.filesystem_index
+    self.yFSNodes = y.share.filesystem_nodes
     self.ySelections = y.share.selections
 
-    debug('load yfs: '+JSON.stringify(self.yfs.keys()))
-    self.yfs.keys().forEach(function(path) {
-      self.fileoperation('add', path, self.yfs.get(path))
+    // init File System from network.
+    self.yFSIndex.keys().forEach(function (key) {
+      var node = self.yFSIndex.get(key)
+      debug('load yFSIndex: ' + JSON.stringify(node))
+      self.fileOperation('add', node)
     })
 
-    self.yfs.observe(function (event) {
-        self.mutualExcluse(event.name, function () {
-          self.fileoperation(event.type, event.name, event.value)
+    // set observe on File System
+    self.yFSIndex.observe(function (event) {
+      self.mutualExcluse(event.value.contentID, function () {
+        debug('give me everything: ' + event.value.name)
+        self.fileOperation(event.type, event.value)
       })
     })
 
@@ -45841,82 +45501,116 @@ function RemoteManager (opts) {
     self.emit('ready')
   })
 }
-RemoteManager.prototype.fileoperation = function (optype, filePath, content) {
+
+NetworkManager.prototype.getFileMetaByPath = function (filepath) {
   var self = this
-  if (optype === 'add' || optype === 'update') { // create file/folder
-    if (optype === 'update') { // delete old file, when a file with the same name has been added
-      self.emit('deleteFile', { filePath: filePath })
-    }
-    var filetype = util.findFileType(filePath)
-    if (filetype === 'text') {
-      self.emit('createFile', {
-        filePath: filePath,
-        content: content.toString()
-      })
-    } else if (filetype === 'image') {
-      self.emit('createFile', {
-        filePath: filePath,
-        content: content
-      })
-    } else if (filetype === 'quilljs') {
-      self.emit('createFile', {
-        filePath: filePath,
-        content: content.toDelta()
-      })
-    } else if (filetype === 'replydb') {
-      // replydb does not saved on FileSystem.
-    } else if(content === 'directory') {
+  var returnNode = null
+  self.yFSIndex.keys().forEach(function (key) {
+    var node = self.yFSIndex.get(key)
+    if (filepath === (node.parentPath + '/' + node.name)) returnNode = node
+  })
+  return returnNode
+}
+NetworkManager.prototype.getFileMetaByContentID = function (contentID) {
+  var self = this
+  var returnNode = null
+  self.yFSIndex.keys().forEach(function (key) {
+    var node = self.yFSIndex.get(key)
+    if (contentID === node.contentID) returnNode = node
+  })
+  return returnNode
+}
+NetworkManager.prototype.getFileByPath = function (filepath) {
+  var self = this
+  var returnNode = null
+  self.yFSIndex.keys().forEach(function (key) {
+    var node = self.yFSIndex.get(key)
+    if (filepath === (node.parentPath + '/' + node.name)) returnNode = self.yFSNodes.get(node.contentID)
+  })
+  return returnNode
+}
+NetworkManager.prototype.getFileByContentID = function (contentID) {
+  var self = this
+  return self.yFSNodes.get(contentID)
+}
+
+NetworkManager.prototype.fileOperation = function (optype, node) {
+  var self = this
+  if (optype === 'add') { // create file/folder
+    if (node.type === util.DIRECTORY_TYPE) {
       self.emit('createDir', {
-        path: filePath
+        name: node.name,
+        type: node.type,
+        contentID: node.contentID,
+        parentPath: node.parentPath
       })
-    } else if (filetype === 'unknown') {
+    } else {
       self.emit('createFile', {
-        filePath: filePath,
-        content: content
+        name: node.name,
+        type: node.type,
+        contentID: node.contentID,
+        replydbID: node.replydbID,
+        parentPath: node.parentPath
       })
-      // TODO: think about what to do with unknown file type
     }
-  } else if (optype === 'delete') { // delete
+  } else if (optype === 'update') { // update file or dir
+    if (node.type === util.DIRECTORY_TYPE) {
+      self.emit('updateDir', {
+        name: node.name,
+        type: node.type,
+        contentID: node.contentID,
+        parentPath: node.parentPath
+      })
+    } else {
+      self.emit('updateFile', {
+        name: node.name,
+        type: node.type,
+        contentID: node.contentID,
+        replydbID: node.replydbID,
+        parentPath: node.parentPath
+      })
+    }
+  } else if (optype === 'delete') { // delete file or dir
     self.emit('deleteFile', {
-      filePath: filePath
+      filePath: node.parentPath + '/' + node.name
     })
   }
 }
-RemoteManager.prototype.onObserver = function (filePath) {
+// TODO: remove it when bindCodeMirror works fine.
+// observer for Y-Text data
+// NetworkManager.prototype.onObserver = function (contentID, type) {
+//   var self = this
+//   setTimeout(function () {
+//     debug('observer setting: ' + contentID)
+//     if (self.observedInstances[contentID]) self.offObserver(contentID)
+//     if (type === 'text') {
+//       self.observedInstances[contentID] = self._onYTextAdd.bind(self, contentID)
+//     } else if (type === 'replydb') {
+//       self.observedInstances[contentID] = self._onReplyAdd.bind(self, contentID)
+//     } else if (type === 'quilljs') {
+//       self.observedInstances[contentID] = self._onYRichtextAdd.bind(self, contentID)
+//     } else return
+//     self.observedInstances[contentID + 'target'] = self.yFSNodes.get(contentID)
+//     debug('observe: ' + typeof self.observedInstances[contentID + 'target'])
+//     self.observedInstances[contentID + 'target'].observe(self.observedInstances[contentID])
+//   }, 100)
+// }
+// NetworkManager.prototype.offObserver = function (contentID) {
+//   var self = this
+//   self.observedInstances[contentID + 'target'].unobserve(self.observedInstances[contentID])
+//   delete self.observedInstances[contentID + 'target']
+//   delete self.observedInstances[contentID]
+// }
+NetworkManager.prototype.getContent = function (contentID, type) {
   var self = this
-  setTimeout(function() {
-    debug('observer setting: ' + filePath);
-    if(self.bindedObservers[filePath]) self.offObserver(filePath)
-    if(util.findFileType(filePath) === 'text') {
-      self.bindedObservers[filePath] = self._onYTextAdd.bind(self, filePath)
-    } else if(util.findFileType(filePath) === 'replydb') {
-      self.bindedObservers[filePath] = self._onReplyAdd.bind(self, filePath)
-    } else if(util.findFileType(filePath) === 'quilljs') {
-      self.bindedObservers[filePath] = self._onYRichtextAdd.bind(self, filePath)
-    } else return
-    self.bindedObservers[filePath + 'target'] = self.yfs.get(filePath)
-    debug('observe: '+ typeof self.bindedObservers[filePath + 'target'])
-    self.bindedObservers[filePath + 'target'].observe(self.bindedObservers[filePath])
-  },100)
-}
-RemoteManager.prototype.offObserver = function (filePath) {
-  var self = this
-  self.bindedObservers[filePath + 'target'].unobserve(self.bindedObservers[filePath])
-  delete self.bindedObservers[filePath + 'target']
-  delete self.bindedObservers[filePath]
-}
-RemoteManager.prototype.getContent = function (filePath) {
-  var self = this
-  if(util.findFileType(filePath) === 'text')
-    return self.yfs.get(filePath).toString()
-  else if(util.findFileType(filePath) === 'quilljs')
-    return self.yfs.get(filePath).toDelta()
-  else return self.yfs.get(filePath)
+  if (type === 'text') return self.getFileByContentID(contentID).toString()
+  else if (type === 'quilljs') return self.getFileByContentID(contentID).toDelta()
+  else return self.getFileByContentID(contentID)
 }
 
-RemoteManager.prototype.getReplyContent = function (filePath) {
+NetworkManager.prototype.getReplyContent = function (contentID) {
   var self = this
-  var yreplies = self.yfs.get(filePath)
+  var yreplies = self.getFileByContentID(contentID)
   var replies = []
   if (!yreplies) return replies
   for (var i = 0; i < yreplies.toArray().length; i++) {
@@ -45933,36 +45627,61 @@ RemoteManager.prototype.getReplyContent = function (filePath) {
       content: reply.get('content')
     }
     replies.push(robj)
-    debug('getReplyContent: '+ JSON.stringify(robj));
+    debug('getReplyContent: ' + JSON.stringify(robj))
   }
   return replies
 }
 
-RemoteManager.prototype.createFile = function (filePath, content) {
+NetworkManager.prototype.createFile = function (parentPath, filename, filetype, content) {
   var self = this
   self.onceReady(function () {
-    content = content || ''
-    var filetype = util.findFileType(filePath)
-    if (filetype === 'image') {
-      self.yfs.set(filePath, content)
-    } else if (filetype === 'text') {
-      self.yfs.set(filePath + '.replydb', Y.Array)
-      self.yfs.set(filePath, Y.Text)
-      insertChunked(self.yfs.get(filePath), 0, content)
-    } else if (filetype === 'quilljs') {
-      self.yfs.set(filePath + '.replydb', Y.Array)
-      self.yfs.set(filePath, Y.Richtext)
-      //insertChunked(self.yfs.get(filePath), 0, content)
-    } else {
-      self.yfs.set(filePath, content)
-    }
+    var contentID = util.randomStr()
+    self.mutualExcluse(contentID, function () {
+      // create file
+      var replydbID = null
+      if (filetype === 'text') { // text handled by codemirror
+        replydbID = util.randomStr()
+        self.yFSNodes.set(contentID, Y.Text)
+        self.yFSNodes.set(replydbID, Y.Array)
+        if (content) insertChunked(self.getFileByContentID(contentID), 0, content)
+      } else if (filetype === 'quilljs') {
+        replydbID = util.randomStr()
+        self.yFSNodes.set(contentID, Y.Richtext)
+        // TODO: insert reply on Richtext
+        // self.yFSNodes.set(replydbID, Y.Array)
+        // TODO: insert content on richtext
+        // if (content) {
+        //   var delta = new Delta([{ insert: content }])
+        //   self.getFileByContentID(contentID).applyDelta(delta)
+        // }
+      } else { // image, binary, etc.
+        self.yFSNodes.set(contentID, content)
+      }
+
+      // create index
+      self.yFSIndex.set(contentID, {
+        name: filename,
+        type: filetype,
+        contentID: contentID,
+        replydbID: replydbID,
+        parentPath: parentPath
+      })
+    })
   })
 }
-
-RemoteManager.prototype.createDir = function (filePath, content) {
+NetworkManager.prototype.createDir = function (parentPath, filename) {
   var self = this
   self.onceReady(function () {
-    self.yfs.set(filePath, 'directory')
+    var contentID = util.randomStr()
+    self.mutualExcluse(contentID, function () {
+      // create index
+      self.yFSIndex.set(contentID, {
+        name: filename,
+        type: util.DIRECTORY_TYPE,
+        contentID: contentID,
+        parentPath: parentPath
+      })
+    })
   })
 }
 
@@ -45976,7 +45695,8 @@ function insertChunked (ytext, start, str) {
 }
 
 function chunkString (str, size) {
-  var numChunks = Math.ceil(str.length / size), chunks = new Array(numChunks)
+  var numChunks = Math.ceil(str.length / size)
+  var chunks = new Array(numChunks)
 
   for (var i = 0, o = 0; i < numChunks; ++i, o += size) {
     chunks[i] = str.substr(o, size)
@@ -45985,114 +45705,102 @@ function chunkString (str, size) {
   return chunks
 }
 
-RemoteManager.prototype.renameDir = function (oldPath, newPath) {
-  var self = this
-  self.yfs.keys().forEach(function(key) {
-      var tempkey = key.slice(0,oldPath.length)
-      console.log(oldPath + ' : '+ tempkey);
-      if(oldPath == tempkey) {
-          var tempnewPath = key.slice(oldPath.length)
-          self.renameFile(key, newPath + tempnewPath)
-      }
-  })
-}
-
-RemoteManager.prototype.renameFile = function (oldPath, newPath) {
+NetworkManager.prototype.renameFile = function (contentID, newName) {
+  // rename file and directory
   var self = this
   self.onceReady(function () {
-    self.mutualExcluse(oldPath, function () {
-      self.mutualExcluse(newPath, function () {
-            var tempobj = self.yfs.get(oldPath)
-            if(!tempobj) return
-
-            self.yfs.set(newPath, tempobj)
-            if(self.yfs.get(oldPath + '.replydb')) {
-              self.renameFile(oldPath + '.replydb', newPath + '.replydb')
-            }
-            self.yfs.delete(oldPath)
-
-        })
-    })
-  })
-}
-RemoteManager.prototype.deleteFile = function (filePath) {
-  var self = this
-  self.onceReady(function () {
-    self.yfs.delete(filePath)
-    if(self.yfs.get(filePath + '.replydb')) self.yfs.delete(filePath + '.replydb')
-  })
-}
-
-RemoteManager.prototype.changeFile = function (filePath, delta) {
-  var self = this
-  self.onceReady(function () {
-    self.mutualExcluse(filePath, function () {
-      var ytext = self.yfs.get(filePath)
-      if (!ytext) return
-
-      // apply the delta to the ytext instance
-      var start = delta.start
-
-      // apply the delete operation first
-      if (delta.removed.length > 0) {
-        var delLength = 0
-        for (var j = 0; j < delta.removed.length; j++) {
-          delLength += delta.removed[j].length
-        }
-        // "enter" is also a character in our case
-        delLength += delta.removed.length - 1
-        ytext.delete(start, delLength)
-      }
-
-      // apply insert operation
-      insertChunked(ytext, start, delta.text.join('\n'))
-    })
-  })
-}
-
-RemoteManager.prototype.changeReply = function (filePath, optype, opval) {
-  var self = this
-  self.onceReady(function () {
-    self.mutualExcluse(filePath, function () {
-      var replydb = self.yfs.get(filePath)
-      if (optype === 'insert') {
-        var ridx = replydb.toArray().length
-        replydb.push([Y.Map])
-        var reply = replydb.get(ridx)
-        reply.set('user_id', opval.user_id)
-        reply.set('user_name', opval.user_name)
-        reply.set('user_picture', opval.user_picture)
-        reply.set('reply_id', opval.reply_id)
-        reply.set('insert_time', opval.insert_time)
-        reply.set('level', opval.level)
-        reply.set('order', opval.order)
-        reply.set('line_num', opval.line_num)
-        reply.set('content', opval.content)
-        debug('reply sent by you: ' + replydb.get(ridx).keys())
-      } else if (optype === 'delete') {
-        for (var i = 0; i < replydb.toArray().length; i++) {
-          if (replydb.get(i).get('reply_id') === opval.reply_id) {
-            replydb.delete(i, 1)
-            break
-          }
-        }
-      } else if (optype === 'update') {
-        for (var i = 0; i < replydb.toArray().length; i++) {
-          var reply = replydb.get(i)
-          if (reply.get('reply_id') === opval.reply_id) {
-            if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
-            if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
-            if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
-            if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
-            break
-          }
+    self.mutualExcluse(contentID, function () {
+      var node = self.getFileMetaByContentID(contentID)
+      if (node) {
+        if (!newName || node.name === newName) return
+        var oldname = node.name
+        node.name = newName
+        self.yFSIndex.set(contentID, node)
+        if (node.type === util.DIRECTORY_TYPE) {
+          var yfsikeys = self.yFSIndex.keys()
+          self.renameSubNodes(yfsikeys, node.parentPath + '/' + oldname, node.parentPath + '/' + node.name)
         }
       }
     })
   })
 }
+NetworkManager.prototype.renameSubNodes = function (yfsikeys, oldParentPath, parentPath) {
+  var self = this
+  for (var j = 0; j < yfsikeys.length; j++) {
+    var node = self.getFileMetaByContentID(yfsikeys[j])
+    self.mutualExcluse(node.contentID, function () {
+      if (node.parentPath === oldParentPath) {
+        node.parentPath = parentPath
+        self.yFSIndex.set(node.contentID, node)
+        if (node.type === util.DIRECTORY_TYPE) {
+          self.renameSubNodes(yfsikeys, oldParentPath + '/' + node.name, node.parentPath + '/' + node.name)
+        }
+      }
+    })
+  }
+}
 
-RemoteManager.prototype.changeSelection = function (data) {
+NetworkManager.prototype.deleteFile = function (contentID) {
+  var self = this
+  self.onceReady(function () {
+    self.mutualExcluse(contentID, function () {
+      var node = self.getFileMetaByContentID(contentID)
+      if (node.type === util.DIRECTORY_TYPE) {
+        var yfsikeys = self.yFSIndex.keys()
+        self.deleteSubNodes(yfsikeys, node.parentPath + '/' + node.name)
+      }
+      if (self.getFileByContentID(contentID)) self.yFSNodes.delete(contentID)
+      if (node.replydbID) self.yFSNodes.delete(node.replydbID)
+      self.yFSIndex.delete(contentID)
+    })
+  })
+}
+NetworkManager.prototype.deleteSubNodes = function (yfsikeys, parentPath) {
+  var self = this
+  for (var j = 0; j < yfsikeys.length; j++) {
+    var node = self.getFileMetaByContentID(yfsikeys[j])
+    self.mutualExcluse(node.contentID, function () {
+      if (node.parentPath === parentPath) {
+        if (node.type === util.DIRECTORY_TYPE) {
+          self.deleteSubNodes(yfsikeys, node.parentPath + '/' + node.name)
+        }
+        if (self.getFileByContentID(node.contentID)) self.yFSNodes.delete(node.contentID)
+        if (node.replydbID) self.yFSNodes.delete(node.replydbID)
+        self.yFSIndex.delete(node.contentID)
+      }
+    })
+  }
+}
+
+// TODO: delete after finish testing bindCodeMirror method
+// NetworkManager.prototype.changeTextFile = function (contentID, delta) {
+//   var self = this
+//   self.onceReady(function () {
+//     self.mutualExcluse(contentID, function () {
+//       var ytext = self.getFileByContentID(contentID)
+//       if (!ytext) return
+//
+//       // apply the delta to the ytext instance
+//       var start = delta.start
+//
+//       // apply the delete operation first
+//       if (delta.removed.length > 0) {
+//         var delLength = 0
+//         for (var j = 0; j < delta.removed.length; j++) {
+//           delLength += delta.removed[j].length
+//         }
+//         // "enter" is also a character in our case
+//         delLength += delta.removed.length - 1
+//         ytext.delete(start, delLength)
+//       }
+//
+//       // apply insert operation
+//       insertChunked(ytext, start, delta.text.join('\n'))
+//     })
+//   })
+// }
+
+NetworkManager.prototype.changeSelection = function (data) {
   var self = this
   self.onceReady(function () {
     // remove our last select first
@@ -46110,88 +45818,487 @@ RemoteManager.prototype.changeSelection = function (data) {
   })
 }
 
-RemoteManager.prototype._onYTextAdd = function (filePath, event) {
+// CodeMirror implementation..
+NetworkManager.prototype.unbindCodeMirror = function (contentID) {
   var self = this
-  self.mutualExcluse(filePath, function () {
-    self.posFromIndex(filePath, event.index, function (from) {
-      if (event.type === 'insert') {
-        self.emit('changeFile', {
-          filePath: filePath,
-          change: {
-            from: from,
-            to: from,
-            text: event.values.join('')
+  var ytext = self.getFileByContentID(contentID)
+  var binding = self.observedInstances[contentID]
+  if (binding) {
+    ytext.unobserve(binding.yCallback)
+    binding.editor.off('changes', binding.editorCallback)
+    self.getFileByContentID(binding.replydbID).unobserve(binding.yReplyCallback)
+    binding.editor.removeListener('changeReply', binding.editorCallback)
+    delete self.observedInstances[contentID]
+  }
+}
+
+NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, replydbID, replyInstance) {
+  var self = this
+  // this function makes sure that either the
+  // codemirror event is executed, or the yjs observer is executed
+  var token = true
+  function mutualExcluse (f) {
+    if (token) {
+      token = false
+      try {
+        f()
+      } catch (e) {
+        token = true
+        throw new Error(e)
+      }
+      token = true
+    }
+  }
+
+  var ytext = self.getFileByContentID(contentID)
+  editorInstance.setValue(ytext.toString())
+
+  var yreply = self.getFileByContentID(replydbID)
+
+  function codeMirrorCallback (cm, deltas) {
+    mutualExcluse(function () {
+      for (var i = 0; i < deltas.length; i++) {
+        var delta = deltas[i]
+        var start = editorInstance.indexFromPos(delta.from)
+        // apply the delete operation first
+        if (delta.removed.length > 0) {
+          var delLength = 0
+          for (var j = 0; j < delta.removed.length; j++) {
+            delLength += delta.removed[j].length
           }
-        })
+          // "enter" is also a character in our case
+          delLength += delta.removed.length - 1
+          ytext.delete(start, delLength)
+        }
+        // apply insert operation
+        // ytext.insert(start, delta.text.join('\n'))
+        insertChunked(ytext, start, delta.text.join('\n'))
+      }
+
+      // update reply line num
+      replyInstance.updateLineChange(cm, yreply)
+    })
+  }
+  editorInstance.on('changes', codeMirrorCallback)
+
+  function yCallback (event) {
+    mutualExcluse(function () {
+      let from = editorInstance.posFromIndex(event.index)
+      if (event.type === 'insert') {
+        let to = from
+        editorInstance.replaceRange(event.values.join(''), from, to)
       } else if (event.type === 'delete') {
-        self.posFromIndex(filePath, event.index + event.length, function (to) {
-          self.emit('changeFile', {
-            filePath: filePath,
-            change: {
-              from: from,
-              to: to,
-              text: ''
-            }
-          })
-        })
+        let to = editorInstance.posFromIndex(event.index + event.length)
+        editorInstance.replaceRange('', from, to)
       }
     })
+  }
+  ytext.observe(yCallback)
 
-    // reply line_num update
-    if (self.replyLazyUpdate) {
-      clearTimeout(self.replyLazyUpdate)
-      self.replyLazyUpdate = null
-    }
-    self.replyLazyUpdate = setTimeout(function () {
-      self.replyUpdate(filePath + '.replydb', self.yfs.get(filePath + '.replydb'), function (replies) {
-        for (var i = 0; i < replies.length; i++) {
-          var reply = replies[i]
-          self.changeReply(filePath + '.replydb', 'update', reply)
+  // set Reply on CodeMirror
+  replyInstance.setReplies(replydbID, editorInstance, self.getReplyContent(replydbID))
+  // yReplyCallback({type: 'insert', values: yreply.toArray()})
+
+  function replyCallback (contentID, optype, opval) {
+    self.onceReady(function () {
+      mutualExcluse(function () {
+        var replydb = self.getFileByContentID(contentID)
+        if (optype === 'insert') {
+          var ridx = replydb.toArray().length
+          replydb.push([Y.Map])
+          var reply = replydb.get(ridx)
+          reply.set('user_id', opval.user_id)
+          reply.set('user_name', opval.user_name)
+          reply.set('user_picture', opval.user_picture)
+          reply.set('reply_id', opval.reply_id)
+          reply.set('insert_time', opval.insert_time)
+          reply.set('level', opval.level)
+          reply.set('order', opval.order)
+          reply.set('line_num', opval.line_num)
+          reply.set('content', opval.content)
+          debug('reply sent by you: ' + replydb.get(ridx).keys())
+        } else if (optype === 'delete') {
+          for (var i = 0; i < replydb.toArray().length; i++) {
+            if (replydb.get(i).get('reply_id') === opval.reply_id) {
+              replydb.delete(i, 1)
+              break
+            }
+          }
+        } else if (optype === 'update') {
+          for (var j = 0; j < replydb.toArray().length; j++) {
+            reply = replydb.get(j)
+            if (reply.get('reply_id') === opval.reply_id) {
+              if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
+              if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
+              if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
+              if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
+              break
+            }
+          }
         }
       })
-    }, 100)
-  })
+    })
+  }
+  replyInstance.on('changeReply', replyCallback)
+
+  function yReplyCallback (event) {
+    mutualExcluse(function () {
+      debug('sync: got reply')
+
+      if (event.type === 'insert') {
+        setTimeout(function () {
+          for (var i = 0; i < event.values.length; i++) {
+            var reply = event.values[i]
+            replyInstance.addReply({
+              user_id: reply.get('user_id'),
+              user_name: reply.get('user_name'),
+              user_picture: reply.get('user_picture'),
+              reply_id: reply.get('reply_id'),
+              insert_time: reply.get('insert_time'),
+              level: reply.get('level'),
+              order: reply.get('order'),
+              line_num: reply.get('line_num'),
+              content: reply.get('content')
+            })
+          }
+        }, 50)
+      } else if (event.type === 'delete') {
+        for (var i = 0; i < event.values.length; i++) {
+          var reply = event.values[i]
+          replyInstance.removeReply({
+            reply_id: reply.get('reply_id')
+          })
+        }
+      // } else if (event.type === 'update') {
+        // TODO: add reply content update feature
+        // maybe use observe deep
+      }
+    })
+  }
+  yreply.observe(yReplyCallback)
+
+  self.observedInstances[contentID] = {
+    editor: editorInstance,
+    yCallback: yCallback,
+    editorCallback: codeMirrorCallback,
+    replydbID: replydbID,
+    yReplyCallback: yReplyCallback,
+    replyCallback: replyCallback
+  }
 }
 
-RemoteManager.prototype._onReplyAdd = function (filePath, event) {
+NetworkManager.prototype.unbindQuill = function (contentID) {
   var self = this
-  self.mutualExcluse(filePath, function () {
-    debug('sync: got reply')
-    if (event.type === 'insert') {
-      self.emit('changeReply', {
-        filePath: filePath,
-        type: 'insert',
-        replies: event.values
-      })
-      debug('sync: reply added!')
-    } else if (event.type === 'delete') {
-      self.emit('changeReply', {
-        filePath: filePath,
-        type: 'delete',
-        replies: event.values
-      })
-    // observeDeep doesn't work.
-    // TODO: reply y-map update function
-    // } else if (event.type === 'update') { // only fires on Y-Map
-    //   self.emit('changeReply', {
-    //     filePath: filePath,
-    //     type: 'update',
-    //     name: event.name,
-    //     value: event.value
-    //   })q
+  var yrichtext = self.getFileByContentID(contentID)
+  var binding = self.observedInstances[contentID]
+  if (binding) {
+    yrichtext.unobserve(binding.yCallback)
+    binding.editor.off('text-change', binding.editorCallback)
+    delete self.observedInstances[contentID]
+  }
+}
+NetworkManager.prototype.bindQuill = function (contentID, quill) {
+  var self = this
+  // this function makes sure that either the
+  // quill event is executed, or the yjs observer is executed
+  var token = true
+  function mutualExcluse (f) {
+    if (token) {
+      token = false
+      try {
+        f()
+      } catch (e) {
+        quill.update()
+        token = true
+        throw new Error(e)
+      }
+      quill.update()
+      token = true
     }
-  })
+  }
+
+  var yrichtext = self.getFileByContentID(contentID)
+  quill.setContents(yrichtext.toDelta())
+  quill.update()
+
+  function quillCallback (delta) {
+    mutualExcluse(function () {
+      yrichtext.applyDelta(delta, quill)
+    })
+  }
+  // TODO: Investigate if 'editor-change' is more appropriate!
+  quill.on('text-change', quillCallback)
+
+  function compareAttributes (a, b) {
+    return a === b || (a == null && b == null) || (a != null && b != null && a.constructor === Array && a[0] === b[0] && a[1] === b[1])
+    /* the same as..
+    if (typeof a === 'string' || a == null) return a === b || a == null && b == null // consider undefined
+    else return a[0] === b[0] && a[1] === b[1]
+    */
+  }
+
+  function yCallback (event) {
+    mutualExcluse(function () {
+      var v // helper variable
+      var curSel // helper variable (current selection)
+      if (event.type === 'insert') {
+        var valuePointer = 0
+        while (valuePointer < event.values.length) {
+          var vals = []
+          while (valuePointer < event.values.length && event.values[valuePointer].constructor !== Array) {
+            vals.push(event.values[valuePointer])
+            valuePointer++
+          }
+          if (vals.length > 0) { // insert new content (text and embed)
+            var position = 0
+            var insertSel = {}
+            for (var l = 0; l < event.index; l++) {
+              v = yrichtext._content[l].val
+              if (v.constructor !== Array) {
+                position++
+              } else {
+                insertSel[v[0]] = v[1]
+              }
+            }
+            // consider the case (this is markup): "hi *you*" & insert "d" at position 3
+            // Quill may implicitely make "d" bold (dunno if thats true). Yjs, however, expects d not to be bold.
+            // So we check future attributes and explicitely set them, if neccessary
+            l = event.index + event.length
+            while (l < yrichtext._content.length) {
+              v = yrichtext._content[l].val
+              if (v.constructor === Array) {
+                if (!insertSel.hasOwnProperty(v[0])) {
+                  insertSel[v[0]] = null
+                }
+              } else {
+                break
+              }
+              l++
+            }
+            // TODO: you definitely should exchange null with the new "false" approach..
+            // Then remove the following! :
+            for (var name in insertSel) {
+              if (insertSel[name] == null) {
+                insertSel[name] = false
+              }
+            }
+            if (yrichtext.length === position + vals.length && vals[vals.length - 1] !== '\n') {
+              // always make sure that the last character is enter!
+              var end = ['\n']
+              var sel = {}
+              // now we remove all selections
+              for (name in insertSel) {
+                if (insertSel[name] !== false) {
+                  end.unshift([name, false])
+                  sel[name] = false
+                }
+              }
+              Y.Array.typeDefinition.class.prototype.insert.call(yrichtext, position + vals.length, end)
+              // format attributes before pushing to quill!
+              quill.insertText(position, '\n', yrichtext._formatAttributesForQuill(sel))
+            }
+            // create delta from vals
+            var delta = []
+            if (position > 0) {
+              delta.push({ retain: position })
+            }
+            var currText = []
+            vals.forEach(function (v) {
+              if (typeof v === 'string') {
+                currText.push(v)
+              } else {
+                if (currText.length > 0) {
+                  delta.push({
+                    insert: currText.join(''),
+                    attributes: insertSel
+                  })
+                  currText = []
+                }
+                delta.push({
+                  insert: v,
+                  attributes: insertSel
+                })
+              }
+            })
+            if (currText.length > 0) {
+              delta.push({
+                insert: currText.join(''),
+                attributes: insertSel
+              })
+            }
+            // format attributes before pushing to quill!
+            delta.forEach(d => {
+              if (d.attributes != null && Object.keys(d.attributes).length > 0) {
+                d.attributes = yrichtext._formatAttributesForQuill(d.attributes)
+              } else {
+                delete d.attributes
+              }
+            })
+            quill.updateContents(delta)
+            // quill.insertText(position, vals.join(''), insertSel)
+          } else { // Array (selection)
+            // a new selection is created
+            // find left selection that matches newSel[0]
+            curSel = null
+            var newSel = event.values[valuePointer++] // get selection, increment counter
+            // denotes the start position of the selection
+            // (without the selection objects)
+            var selectionStart = 0
+            for (var j = event.index + valuePointer - 2/* -1 for index, -1 for incremented valuePointer */; j >= 0; j--) {
+              v = yrichtext._content[j].val
+              if (v.constructor === Array) {
+                // check if v matches newSel
+                if (newSel[0] === v[0]) { // compare names
+                  // found a selection
+                  // update curSel and go to next step
+                  curSel = v[1]
+                  break
+                }
+              } else {
+                selectionStart++
+              }
+            }
+            // make sure to decrement j, so we correctly compute selectionStart
+            for (; j >= 0; j--) {
+              v = yrichtext._content[j].val
+              if (v.constructor !== Array) {
+                selectionStart++
+              }
+            }
+            // either a selection was found {then curSel was updated}, or not (then curSel = null)
+            if (compareAttributes(newSel[1], curSel)) {
+              // both are the same. not necessary to do anything
+              continue
+            }
+            // now find out the range over which newSel has to be created
+            var selectionEnd = selectionStart
+            for (var k = event.index + valuePointer/* -1 for incremented valuePointer, +1 for algorithm */; k < yrichtext._content.length; k++) {
+              v = yrichtext._content[k].val
+              if (v.constructor === Array) {
+                if (v[0] === newSel[0]) { // compare names
+                  // found another selection with same attr name
+                  break
+                }
+              } else {
+                selectionEnd++
+              }
+            }
+            // create a selection from selectionStart to selectionEnd
+            if (selectionStart !== selectionEnd) {
+              // format attributes before pushing to quill!!
+              var format = {}
+              format[newSel[0]] = newSel[1] == null ? false : newSel[1]
+              format = yrichtext._formatAttributesForQuill(format)
+              if (newSel[0] === '_block') {
+                var removeFormat = {}
+                yrichtext._quillBlockFormats.forEach((f) => { removeFormat[f] = false })
+                quill.formatText(selectionStart, selectionEnd - selectionStart, removeFormat)
+              }
+              quill.formatText(selectionStart, selectionEnd - selectionStart, format)
+            }
+          }
+        }
+      } else if (event.type === 'delete') {
+        // sanitize events
+        var myEvents = []
+        for (var i = 0, _i = 0; i < event.length; i++) {
+          if (event.values[i].constructor === Array) {
+            if (i !== _i) {
+              myEvents.push({
+                type: 'text',
+                length: i - _i,
+                index: event.index
+              })
+            }
+            _i = i + 1
+            myEvents.push({
+              type: 'selection',
+              val: event.values[i],
+              index: event.index
+            })
+          }
+        }
+        if (i !== _i) {
+          myEvents.push({
+            type: 'text',
+            length: i - _i,
+            index: event.index
+          })
+        }
+        // ending sanitizing.. start brainfuck
+        myEvents.forEach(function (event) {
+          if (event.type === 'text') {
+            var pos = 0
+            for (var u = 0; u < event.index; u++) {
+              v = yrichtext._content[u].val
+              if (v.constructor !== Array) {
+                pos++
+              }
+            }
+            quill.deleteText(pos, event.length)
+          } else {
+            curSel = null
+            var from = 0
+            var x
+            for (x = event.index - 1; x >= 0; x--) {
+              v = yrichtext._content[x].val
+              if (v.constructor === Array) {
+                if (v[0] === event.val[0]) { // compare names
+                  curSel = v[1]
+                  break
+                }
+              } else {
+                from++
+              }
+            }
+            for (; x >= 0; x--) {
+              v = yrichtext._content[x].val
+              if (v.constructor !== Array) {
+                from++
+              }
+            }
+            var to = from
+            for (x = event.index; x < yrichtext._content.length; x++) {
+              v = yrichtext._content[x].val
+              if (v.constructor === Array) {
+                if (v[0] === event.val[0]) { // compare names
+                  break
+                }
+              } else {
+                to++
+              }
+            }
+            if (!compareAttributes(curSel, event.val[1]) && from !== to) {
+              // format attributes before pushing to quill!!
+              var format = {}
+              format[event.val[0]] = curSel == null ? false : curSel
+              format = yrichtext._formatAttributesForQuill(format)
+              if (event.val[0] === '_block') {
+                var removeFormat = {}
+                yrichtext._quillBlockFormats.forEach((f) => { removeFormat[f] = false })
+                quill.formatText(from, to - from, removeFormat)
+              }
+              quill.formatText(from, to - from, format)
+            }
+          }
+        })
+      }
+      quill.update()
+    })
+  }
+  yrichtext.observe(yCallback)
+
+  self.observedInstances[contentID] = {
+    editor: quill,
+    yCallback: yCallback,
+    editorCallback: quillCallback
+    // replydbID: replydbID,
+    // yReplyCallback: yReplyCallback,
+    // replyCallback: replyCallback
+  }
 }
 
-RemoteManager.prototype._onYRichtextAdd = function (filePath, event) {
-  var self = this
-  self.mutualExcluse(filePath, function () {
-    // bindQuill을 사용하는 동안은 할 일이 없다. 추적용
-    debug('Richtext event recieved: '+ JSON.stringify(event))
-  })
-}
-
-RemoteManager.prototype._onLostPeer = function (peer) {
+NetworkManager.prototype._onLostPeer = function (peer) {
   var self = this
   self.ySelections.toArray().forEach(function (sel, i) {
     if (sel.id === peer.id) {
@@ -46200,7 +46307,7 @@ RemoteManager.prototype._onLostPeer = function (peer) {
   })
 }
 
-RemoteManager.prototype.destroy = function () {
+NetworkManager.prototype.destroy = function () {
   var self = this
   // TODO: Add a proper destroy function in simple-signal
   self.peers.forEach(function (peer) {
@@ -46210,18 +46317,15 @@ RemoteManager.prototype.destroy = function () {
   self.client = null
   self.voice = null
   self.id = null
-  self.yfs = null
-  // TODO: destroy yfs recursively
-
-
+  self.yFSIndex = null
+  self.yFSNodes = null
   self.ySelections = null
-  self.posFromIndex = null
   self.lastSelection = null
 }
 
-module.exports = RemoteManager
+module.exports = NetworkManager
 
-},{"../filesystem/util":448,"./y-multihack":463,"debug":339,"events":354,"inherits":363,"y-array":426,"y-map":427,"y-memory":428,"y-richtext":430,"y-text":431,"yjs":439}],462:[function(require,module,exports){
+},{"../filesystem/util":448,"./y-multihack":462,"debug":339,"events":354,"inherits":363,"y-array":426,"y-map":427,"y-memory":428,"y-richtext":430,"y-text":431,"yjs":439}],461:[function(require,module,exports){
 var getusermedia = require('getusermedia')
 
 function VoiceCall (socket, client, room) {
@@ -46351,7 +46455,7 @@ VoiceCall.prototype.toggle = function () {
 
 module.exports = VoiceCall
 
-},{"getusermedia":357}],463:[function(require,module,exports){
+},{"getusermedia":357}],462:[function(require,module,exports){
 (function (global){
 /* globals Y */
 
