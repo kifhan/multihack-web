@@ -14,19 +14,6 @@ function TabContainer () {
   self.tabs = []
 }
 
-// TabContainer.prototype.fileOpened = function (title) {
-//   var self = this
-//   var lastTab = self.dom.querySelector('.active.tab')
-//   if (lastTab) lastTab.className = 'tab'
-//   for (var i = 0; i < self.tabs.length; i++) {
-//     if (self.tabs[i].title === title) {
-//       self.tabs[i].setActive()
-//       return
-//     }
-//   }
-//   self.newTab(title)
-// }
-
 TabContainer.prototype.newTab = function (title, view) {
   var self = this
 
@@ -43,12 +30,14 @@ TabContainer.prototype.newTab = function (title, view) {
   })
 
   tab.on('close', function () {
-    self.dom.removeChild(tab.dom)
-    // self.tabs.splice(self.tabs.indexOf(tab), 1)
-    self.emit('close', {
-      tab: tab,
-      view: tab.bindedView
-    })
+    if (self.dom === tab.dom.parentNode) {
+      self.dom.removeChild(tab.dom)
+      self.deleteTab(tab)
+      self.emit('close', {
+        tab: tab,
+        view: tab.bindedView
+      })
+    }
   })
 
   self.tabs.push(tab)
@@ -62,8 +51,14 @@ TabContainer.prototype.newTab = function (title, view) {
 }
 TabContainer.prototype.deleteTab = function (tab) {
   var self = this
-  self.tabs.splice(self.tabs.indexOf(tab), 1)
-  delete tab
+  if (self.tabs.indexOf(tab) !== -1) self.tabs.splice(self.tabs.indexOf(tab), 1)
+  // delete tab
+}
+TabContainer.prototype.closeTab = function (tab) {
+  var self = this
+  if (self.dom !== tab.dom.parentNode) return
+  self.dom.removeChild(tab.dom)
+  self.deleteTab(tab)
 }
 
 TabContainer.prototype.fileRenamed = function (title, newtitle) {

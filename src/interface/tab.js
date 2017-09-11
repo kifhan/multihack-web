@@ -6,10 +6,10 @@ var template = '<span>{{title}}</span><div class="close">ⓧ</div>'
 
 inherits(Tab, EventEmitter)
 
-function Tab (title,bindedView) {
+function Tab (title, bindedView) {
   var self = this
   if (!(self instanceof Tab)) return new Tab()
-  if(!bindedView) throw Error('Tab: can not create tab without view!')
+  if (!bindedView) throw Error('Tab: can not create tab without view!')
 
   self.dom = document.createElement('div')
   self.dom.className = 'tab active'
@@ -45,7 +45,7 @@ Tab.prototype.rename = function (newtitle) {
   self.title = newtitle
 
   self.dom.innerHTML = mustache.render(template, {title: newtitle})
-  self.dom.querySelector('.close').addEventListener('click', self._onclose.bind(self))
+  self.dom.querySelector('.close').addEventListener('click', self.close.bind(self))
 }
 
 module.exports = Tab

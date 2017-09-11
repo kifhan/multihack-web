@@ -5,6 +5,12 @@ util.getFilename = function (path) {
   return split[split.length - 1]
 }
 
+util.getParentPath = function (path) {
+  var parentPath = path.split('/')
+  parentPath.splice(-1, 1)
+  return parentPath.join('/')
+}
+
 util.getExtension = function (path) {
   path = util.getFilename(path)
   var split = path.split('.')
@@ -55,34 +61,23 @@ util.pathCheck = function (path) {
   return PATH_MAPPINGS[util.getExtension(path)] || null
 }
 util.findFileType = function (path) {
-  return (util.pathCheck(path) 
-  || (!!util.pathToCodeMode(path).name?'text':null) 
-  || util.getViewMapping(path) 
-  || 'unknown')
+  return (util.pathCheck(path) || (util.pathToCodeMode(path).name ? 'text' : null) || util.getViewMapping(path) || 'unknown')
 }
 
-// Creates a zip archive from a file tree
-util.zipTree = function (zip, nodeList) {
-  console.log(nodeList)
-  for (var i = 0; i < nodeList.length; i++) {
- // Iterate children
-
-    if (nodeList[i].isDir) {
-      util.zipTree(zip, nodeList[i].nodes)
-    } else {
-      zip.file(nodeList[i].path.slice(1), nodeList[i].content)
-    }
-  }
-}
+util.DIRECTORY_TYPE = 'directory'
 
 util.getParameterByName = function (name) {
-    var url = window.location.href;
-    name = name.replace(/[\[\]]/g, "\\$&");
-    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, " "));
+  var url = window.location.href
+  name = name.replace(/[\[\]]/g, '\\$&')
+  var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)')
+  var results = regex.exec(url)
+  if (!results) return null
+  if (!results[2]) return ''
+  return decodeURIComponent(results[2].replace(/\+/g, ' '))
+}
+
+util.randomStr = function () {
+  return Math.random().toString(36).substr(2)
 }
 
 module.exports = util

@@ -1,14 +1,14 @@
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
 // var FileSystem = require('./../filesystem/filesystem')
-// var Util = require('./../filesystem/util')
+var util = require('./../filesystem/util')
 var User = require('./../auth/user')
 
 inherits(Reply, EventEmitter)
 
-function Reply () {
+function Reply (options) {
   var self = this
-  if (!(self instanceof Reply)) return new Reply()
+  if (!(self instanceof Reply)) return new Reply(options)
 
   self.lineWidgets = null
   // self.replies = undefined // Y-Array로 댓글 오브젝트를 저장하는 배열이다.
@@ -18,64 +18,68 @@ function Reply () {
   // reply      { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, content }
   // replyInput { user_id, user_name, user_picture, reply_id, insert_time, level, order, line_num, input_content }
   self.replyPanel = null
-  self.cm = null
-  self.timeticks = null
-  self.timeouts = null
-  self._workingFilePath = null
+  self.cm = options.cm
+  self.timeticks = []
+  self.timeouts = []
+  self.contentID = options.contentID
+  if (!self.contentID) {
+    console.warn('Can\'t initiate reply instance!')
+  }
+
+  self.setReplyPanel(self.cm)
 }
 
-Reply.prototype.setReplies = function (filePath, cm, replies) {
+Reply.prototype.setReplies = function (cm, replies) {
   var self = this
-  self._workingFilePath = filePath
   self.reinputs = []
   self.cm = cm
   if (self.timeticks) {
-    for (var j = 0;j < self.timeticks.length;j++) {
+    for (var j = 0; j < self.timeticks.length; j++) {
       clearInterval(self.timeticks[j])
     }
   }
   self.timeticks = []
   if (self.timeouts) {
-    for (var j = 0;j < self.timeouts.length;j++) {
-      clearInterval(self.timeouts[j])
+    for (var k = 0; k < self.timeouts.length; k++) {
+      clearInterval(self.timeouts[k])
     }
   }
   self.timeouts = []
   self.setReplyPanel(self.cm)
 
   if (self.lineWidgets) {
-    for (var j = self.lineWidgets.length - 1; j >= 0; j--) {
+    for (var m = self.lineWidgets.length - 1; m >= 0; m--) {
       self.removeReply({
-        reply_id: self.lineWidgets[j].node.getAttribute('id').replace("reply-","")
+        reply_id: self.lineWidgets[m].node.getAttribute('id').replace('reply-', '')
       }, true)
     }
   }
   self.lineWidgets = []
 
-  console.log('Reply: see replies structure: ' + JSON.stringify(replies));
+  console.log('Reply: see replies structure: ' + JSON.stringify(replies))
   for (var i = 0; i < replies.length; i++) {
     self.addReply(replies[i])
   }
-  console.log('Reply set init finished: ' + self._workingFilePath);
+  console.log('Reply set init finished: ' + self.contentID)
 }
 
-Reply.prototype.getLineChange = function (cm, replies) {
+Reply.prototype.updateLineChange = function (cm, replies) {
   var self = this
-  if (!self.lineWidgets) return []
+  if (!self.lineWidgets) return
   var changeobjs = []
-  if (typeof replies === 'undefined') return []
-  var ch_replies = replies.toArray()
+  if (typeof replies === 'undefined') return
+  var chReplies = replies.toArray()
   for (var j = 0; j < self.lineWidgets.length; j++) {
-    for (var i = 0; i < ch_replies.length; i++) {
+    for (var i = 0; i < chReplies.length; i++) {
       // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + repliesarray[i].reply_id)
       if (self.lineWidgets[j].node.getAttribute('id') === 'reply-' + replies.get(i).get('reply_id')) {
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) != replies.get(i).get('line_num')) {
+        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== replies.get(i).get('line_num')) {
           // console.log("line_num needs to be change: " + replies.get(i).reply_id)
-          var new_line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
-          if (!new_line_num) break
+          var newLineNum = self.cm.getLineNumber(self.lineWidgets[j].line)
+          if (!newLineNum) break
           changeobjs.push({
             reply_id: replies.get(i).get('reply_id'),
-            line_num: new_line_num
+            line_num: newLineNum
           })
         }
       }
@@ -84,24 +88,35 @@ Reply.prototype.getLineChange = function (cm, replies) {
       // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
       if (self.lineWidgets[j].node.getAttribute('id') === 'reply-input-container-' + self.reinputs[k].reply_id) {
         // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) != self.reinputs[k].line_num) {
+        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== self.reinputs[k].line_num) {
           self.reinputs[k].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
         }
       }
     }
   }
-  return changeobjs
+  if (changeobjs.length > 0) {
+    changeobjs.forEach(function (cobj) {
+      self.emit('changeReply', {
+        contentID: self.contentID,
+        optype: 'update',
+        opval: {
+          reply_id: cobj.reply_id,
+          line_num: cobj.line_num
+        }
+      })
+    })
+  }
 }
 
 Reply.prototype.addReplyInput = function (line, level, order) {
   var self = this
-  self.removeReplyInput(); // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
+  self.removeReplyInput() // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
 
   level = typeof level === 'undefined' ? 0 : level
   var instertorder = typeof order === 'undefined' ? 0 : order
 
   var rcount = 0
-  for (var i = 0;i < self.lineWidgets.length;i++) {
+  for (var i = 0; i < self.lineWidgets.length; i++) {
     if (self.cm.getLineNumber(self.lineWidgets[i].line) === line) {
       rcount++
     }
@@ -114,8 +129,8 @@ Reply.prototype.addReplyInput = function (line, level, order) {
 
   // 댓글 입력 노드를 삽입하는 함수이다.
   // line은 에디터 줄의 번호나 lineHandle 오브젝트, 혹은 이미 등록된 댓글 노드의 id가 될 수 있다.
-  var reply_id = self.genId()
-  var replyinputdom = document.createElement('DIV'); // 삽입할 노드를 생성한다.
+  var reply_id = util.randomStr()
+  var replyinputdom = document.createElement('DIV') // 삽입할 노드를 생성한다.
   replyinputdom.setAttribute('class', 'reply-box')
   replyinputdom.setAttribute('id', 'reply-input-container-' + reply_id)
   replyinputdom.innerHTML = '<div class="reply" style="margin:0;padding:5px; background-color:#f6f7f9;">' +
@@ -170,13 +185,13 @@ Reply.prototype.onAddReply = function (event, reply_id) {
   // 댓글입력노드에서 키를 누르면 호출된다. enter 키를 감지하면 댓글노드를 삽입한다.
   // event는 onkeydown 이벤트에서 전달된 이벤트 오브젝트이다.
   // reply_id는 해당 노드 id의 번호이다.
-  if (event.keyCode == 13 || event.which == 13) {
+  if (event.keyCode === 13 || event.which === 13) {
     // event.keyCode == 13 은 enter 키이다. event.which는 브라우져 호환성을 위해 삽입했다.
     // 댓글 입력 내용을 가져올 노드이다.
     var targetinput
     for (var i = 0; i < self.reinputs.length; ++i) {
       // self.reinputs 배열에서 댓글입력노드를 찾는다.
-      if (self.reinputs[i].reply_id == reply_id) {
+      if (self.reinputs[i].reply_id === reply_id) {
         targetinput = self.reinputs[i]
       }
     }
@@ -195,7 +210,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
   var textcontent, reply_id
   if (set_from_user) {
     textcontent = replyobj.input_content
-    reply_id = self.genId()
+    reply_id = util.randomStr()
     self.removeReplyInput()
   } else {
     textcontent = replyobj.content
@@ -204,7 +219,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
 
   console.log('going to add reply: ' + reply_id)
   if (typeof reply_id === 'undefined') {
-    console.error('Cannot add reply of undefined: ' + self._workingFilePath);
+    console.error('Cannot add reply of undefined: ' + self.contentID);
   }
 
   var replydom = document.createElement('DIV')
@@ -240,12 +255,12 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
   // if (replyobj.order >= rcount) self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom))
   // else self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom, { insertAt: replyobj.order }))
   var widget = self.cm.addLineWidget(replyobj.line_num, replydom)
-self.lineWidgets.push(widget)
-console.log('widget is: ' + widget);
+  self.lineWidgets.push(widget)
+  console.log('widget is: ' + widget)
 
   console.log('reply inserted at line: ' + replyobj.line_num + ' order: ' + replyobj.order + ' of total: ' + rcount)
 
-  if (replyobj.user_id == User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
+  if (replyobj.user_id === User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
     var oarcd = function () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
       clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
@@ -267,7 +282,7 @@ console.log('widget is: ' + widget);
   // self.addReplyInput(replyobj.line_num, replyobj.level, replyobj.order + 1)
 
   self.emit('changeReply', {
-    filePath: self._workingFilePath,
+    contentID: self.contentID,
     optype: 'insert',
     opval: {
       user_id: replyobj.user_id,
@@ -291,11 +306,13 @@ Reply.prototype.getTimeDifference = function (current, previous) {
   var msPerMonth = msPerDay * 30
   var msPerYear = msPerDay * 365
   var elapsed = current - previous
-  if (elapsed < msPerMinute) { return Math.floor(elapsed / 1000) + ' seconds ago'; }
-  else if (elapsed < msPerHour) { return Math.floor(elapsed / msPerMinute) + ' minutes ago'; }
-  else if (elapsed < msPerDay) { return Math.floor(elapsed / msPerHour) + ' hours ago'; }
-  else if (elapsed < msPerMonth) { return Math.floor(elapsed / msPerDay) + ' days ago'; }
-  else if (elapsed < msPerYear) { return 'approximately ' + Math.floor(elapsed / msPerMonth) + ' months ago'; }else { return Math.floor(elapsed / msPerYear) + ' years ago'; }
+
+  if (elapsed < msPerMinute) return Math.floor(elapsed / 1000) + ' seconds ago'
+  else if (elapsed < msPerHour) return Math.floor(elapsed / msPerMinute) + ' minutes ago'
+  else if (elapsed < msPerDay) return Math.floor(elapsed / msPerHour) + ' hours ago'
+  else if (elapsed < msPerMonth) return Math.floor(elapsed / msPerDay) + ' days ago'
+  else if (elapsed < msPerYear) return 'approximately ' + Math.floor(elapsed / msPerMonth) + ' months ago'
+  else return Math.floor(elapsed / msPerYear) + ' years ago'
 }
 
 Reply.prototype.removeReplyInput = function () {
@@ -317,8 +334,8 @@ Reply.prototype.removeReply = function (robj, dontsync) {
   var self = this
   dontsync = (typeof dontsync === 'undefined') ? false : dontsync
   // 'user_request':User.user_id
-  if (typeof robj.user_request !== 'undefined') {
-    if (robj.user_id != robj.user_request) {
+  if (robj.user_request) {
+    if (robj.user_id !== robj.user_request) {
       console.log('Failed to remove reply. Permission denied.')
       return
     }
@@ -328,9 +345,9 @@ Reply.prototype.removeReply = function (robj, dontsync) {
       self.cm.removeLineWidget(self.lineWidgets[j])
       self.lineWidgets.splice(j, 1)
       if (dontsync === false) {
-        console.log('reply removed by user');
+        console.log('reply removed by user')
         self.emit('changeReply', {
-          filePath: self._workingFilePath,
+          contentID: self.contentID,
           optype: 'delete',
           opval: {
             reply_id: robj.reply_id
@@ -373,7 +390,7 @@ Reply.prototype.createButton = function (cm, config) {
   if (config.el) {
     if (typeof config.el === 'function') {
       buttonNode = config.el(cm)
-    } else { buttonNode = config.el; }
+    } else { buttonNode = config.el }
   } else {
     buttonNode = document.createElement('button')
     buttonNode.innerHTML = config.label
@@ -387,8 +404,8 @@ Reply.prototype.createButton = function (cm, config) {
     //   })
     buttonNode.addEventListener('click', config.callback.bind(this, cm))
 
-    if (config.class) { buttonNode.className = config.class; }
-    if (config.title) { buttonNode.setAttribute('title', config.title); }
+    if (config.class) { buttonNode.className = config.class }
+    if (config.title) { buttonNode.setAttribute('title', config.title) }
   }
   if (config.hotkey) {
     var map = {}
@@ -398,8 +415,4 @@ Reply.prototype.createButton = function (cm, config) {
   return buttonNode
 }
 
-Reply.prototype.genId = function () {
-  return Math.random().toString(36).substr(2)
-}
-
-module.exports = new Reply()
+module.exports = Reply

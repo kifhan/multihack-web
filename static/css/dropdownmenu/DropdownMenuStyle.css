@@ -77,3 +77,13 @@
     padding: 0;
     border-bottom: 1px solid #cccccc;
 }
+
+.dd-parent {
+  cursor: pointer;
+}
+.dd-parent .dropdown .dd-button {
+    visibility: hidden;
+}
+.dd-parent:hover .dropdown .dd-button {
+    visibility: visible;
+}
