@@ -1,10 +1,6 @@
 /* global localStorage */
-// y-js browser debug state
-
-localStorage.debug = 'y:*,MH:*'
-// Turn on debug log
+localStorage.debug = 'y:*,MH:*' // Turn on debug log
 var debug = require('debug')('MH:index')
-
 var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
 var CodeEditor = require('./editor/codeeditor')
@@ -39,7 +35,7 @@ function Multihack (config) {
       if (target) f()
       else setTimeout(ft, 50)
     }
-    setTimeout(ft, 50)
+    ft()
   }
 
   self._openView = function (e) {
@@ -49,7 +45,6 @@ function Multihack (config) {
       return
     }
     var filenode = FileSystem.getFileByPath(e.path)
-    // var filenode = FileSystem.getFileByPath(e.path)
     debug('open view with type: ' + filenode.type)
 
     self.execWhenTargetSet(filenode.contentID, function () {
@@ -59,17 +54,15 @@ function Multihack (config) {
         view.open(e.path, self.netManager, reply)
         // setting an observer for document sync.
         // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
-
         // Load and set reply data after file opens.
         // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
       } else if (filenode.type === 'quilljs') {
         view = new DocEditor()
         view.open(e.path, self.netManager)
-        // self.netManager.bindQuill(e.contentID, view._quill)
+        //   // TODO: image viewer 만든다.
         // } else if(util.findFileType(e.path) === 'image') {
         //   view = new HtmlEditor({content:''})
         //   view.open(e.path,self.netManager)
-        //   // TODO: image viewer 만든다.
       } else {
         view = new HtmlEditor({
           content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
@@ -137,8 +130,6 @@ function Multihack (config) {
     // call when gui delete directory
     // 이벤트가 발생 한 file의 path로 fileSystem에서 file을 받아온다.
     var filenode = e.file
-    // var filenode = FileSystem.getFileByPath(e.path)
-
     // get new file/folder name
     // 수정될 파일이나 폴더 이름을 받는다.
     Interface.renameDialog(filenode.name, function (data) {
@@ -148,9 +139,6 @@ function Multihack (config) {
       } else {
         if (FileSystem.changeFileInfo(filenode.path, {name: data.newName})) success = true
       }
-      // TODO: rename 할때 열린 창을 유지하는 방법에 대해 생각해본다.
-      // 예를 들어 settimeout으로 100 tick 후에 getFileByContentID 해서 workingFile을 갱신하는 방법
-      // get이 안 나올 경우 창을 닫는다.
       if (success) {
         debug('rename filenode: ' + JSON.stringify(filenode))
         self.netManager.renameFile(filenode.contentID, filenode.name)

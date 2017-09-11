@@ -14,19 +14,6 @@ function TabContainer () {
   self.tabs = []
 }
 
-// TabContainer.prototype.fileOpened = function (title) {
-//   var self = this
-//   var lastTab = self.dom.querySelector('.active.tab')
-//   if (lastTab) lastTab.className = 'tab'
-//   for (var i = 0; i < self.tabs.length; i++) {
-//     if (self.tabs[i].title === title) {
-//       self.tabs[i].setActive()
-//       return
-//     }
-//   }
-//   self.newTab(title)
-// }
-
 TabContainer.prototype.newTab = function (title, view) {
   var self = this
 

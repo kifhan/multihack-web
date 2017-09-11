@@ -200,31 +200,7 @@ NetworkManager.prototype.fileOperation = function (optype, node) {
     })
   }
 }
-// TODO: remove it when bindCodeMirror works fine.
-// observer for Y-Text data
-// NetworkManager.prototype.onObserver = function (contentID, type) {
-//   var self = this
-//   setTimeout(function () {
-//     debug('observer setting: ' + contentID)
-//     if (self.observedInstances[contentID]) self.offObserver(contentID)
-//     if (type === 'text') {
-//       self.observedInstances[contentID] = self._onYTextAdd.bind(self, contentID)
-//     } else if (type === 'replydb') {
-//       self.observedInstances[contentID] = self._onReplyAdd.bind(self, contentID)
-//     } else if (type === 'quilljs') {
-//       self.observedInstances[contentID] = self._onYRichtextAdd.bind(self, contentID)
-//     } else return
-//     self.observedInstances[contentID + 'target'] = self.yFSNodes.get(contentID)
-//     debug('observe: ' + typeof self.observedInstances[contentID + 'target'])
-//     self.observedInstances[contentID + 'target'].observe(self.observedInstances[contentID])
-//   }, 100)
-// }
-// NetworkManager.prototype.offObserver = function (contentID) {
-//   var self = this
-//   self.observedInstances[contentID + 'target'].unobserve(self.observedInstances[contentID])
-//   delete self.observedInstances[contentID + 'target']
-//   delete self.observedInstances[contentID]
-// }
+
 NetworkManager.prototype.getContent = function (contentID, type) {
   var self = this
   if (type === 'text') return self.getFileByContentID(contentID).toString()
@@ -395,34 +371,6 @@ NetworkManager.prototype.deleteSubNodes = function (yfsikeys, parentPath) {
     })
   }
 }
-
-// TODO: delete after finish testing bindCodeMirror method
-// NetworkManager.prototype.changeTextFile = function (contentID, delta) {
-//   var self = this
-//   self.onceReady(function () {
-//     self.mutualExcluse(contentID, function () {
-//       var ytext = self.getFileByContentID(contentID)
-//       if (!ytext) return
-//
-//       // apply the delta to the ytext instance
-//       var start = delta.start
-//
-//       // apply the delete operation first
-//       if (delta.removed.length > 0) {
-//         var delLength = 0
-//         for (var j = 0; j < delta.removed.length; j++) {
-//           delLength += delta.removed[j].length
-//         }
-//         // "enter" is also a character in our case
-//         delLength += delta.removed.length - 1
-//         ytext.delete(start, delLength)
-//       }
-//
-//       // apply insert operation
-//       insertChunked(ytext, start, delta.text.join('\n'))
-//     })
-//   })
-// }
 
 NetworkManager.prototype.changeSelection = function (data) {
   var self = this

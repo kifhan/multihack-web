@@ -42765,7 +42765,6 @@ function CodeEditor (options) {
   self.textarea = textarea
 
   self._cm = CodeMirror(function (elt) {
-    // elt.className += " view code-editor"
     self.textarea.parentNode.replaceChild(elt, self.textarea)
     self.textarea = elt
   }, {
@@ -42819,13 +42818,6 @@ CodeEditor.prototype._onSelectionChange = function (cm, change) {
 
   var ranges = change.ranges.map(self._putHeadBeforeAnchor)
 
-  // self.emit('selection', {
-  //   filePath: self._workingFile.path,
-  //   change: {
-  //     type: 'selection',
-  //     ranges: ranges
-  //   }
-  // })
   self._remote.changeSelection({
     filePath: self._workingFile.path,
     change: {
@@ -43929,12 +43921,8 @@ module.exports = util
 
 },{}],449:[function(require,module,exports){
 /* global localStorage */
-// y-js browser debug state
-
-localStorage.debug = 'y:*,MH:*'
-// Turn on debug log
+localStorage.debug = 'y:*,MH:*' // Turn on debug log
 var debug = require('debug')('MH:index')
-
 var FileSystem = require('./filesystem/filesystem')
 var Interface = require('./interface/interface')
 var CodeEditor = require('./editor/codeeditor')
@@ -43969,7 +43957,7 @@ function Multihack (config) {
       if (target) f()
       else setTimeout(ft, 50)
     }
-    setTimeout(ft, 50)
+    ft()
   }
 
   self._openView = function (e) {
@@ -43979,7 +43967,6 @@ function Multihack (config) {
       return
     }
     var filenode = FileSystem.getFileByPath(e.path)
-    // var filenode = FileSystem.getFileByPath(e.path)
     debug('open view with type: ' + filenode.type)
 
     self.execWhenTargetSet(filenode.contentID, function () {
@@ -43989,17 +43976,15 @@ function Multihack (config) {
         view.open(e.path, self.netManager, reply)
         // setting an observer for document sync.
         // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
-
         // Load and set reply data after file opens.
         // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
       } else if (filenode.type === 'quilljs') {
         view = new DocEditor()
         view.open(e.path, self.netManager)
-        // self.netManager.bindQuill(e.contentID, view._quill)
+        //   // TODO: image viewer 만든다.
         // } else if(util.findFileType(e.path) === 'image') {
         //   view = new HtmlEditor({content:''})
         //   view.open(e.path,self.netManager)
-        //   // TODO: image viewer 만든다.
       } else {
         view = new HtmlEditor({
           content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
@@ -44067,8 +44052,6 @@ function Multihack (config) {
     // call when gui delete directory
     // 이벤트가 발생 한 file의 path로 fileSystem에서 file을 받아온다.
     var filenode = e.file
-    // var filenode = FileSystem.getFileByPath(e.path)
-
     // get new file/folder name
     // 수정될 파일이나 폴더 이름을 받는다.
     Interface.renameDialog(filenode.name, function (data) {
@@ -44078,9 +44061,6 @@ function Multihack (config) {
       } else {
         if (FileSystem.changeFileInfo(filenode.path, {name: data.newName})) success = true
       }
-      // TODO: rename 할때 열린 창을 유지하는 방법에 대해 생각해본다.
-      // 예를 들어 settimeout으로 100 tick 후에 getFileByContentID 해서 workingFile을 갱신하는 방법
-      // get이 안 나올 경우 창을 닫는다.
       if (success) {
         debug('rename filenode: ' + JSON.stringify(filenode))
         self.netManager.renameFile(filenode.contentID, filenode.name)
@@ -44250,83 +44230,81 @@ Multihack.prototype._initRemote = function (cb) {
 module.exports = Multihack
 
 },{"./auth/user":440,"./editor/codeeditor":441,"./editor/doceditor":442,"./editor/htmlviewer":443,"./editor/reply":444,"./filesystem/filesystem":447,"./filesystem/util":448,"./interface/interface":451,"./interface/lang/lang":452,"./network/network":460,"./network/voice":461,"debug":339}],450:[function(require,module,exports){
-function DropdownMenu() {
-    var self = this;
-    if (!(this instanceof DropdownMenu)) return new DropdownMenu();
+function DropdownMenu () {
+  var self = this
+  if (!(this instanceof DropdownMenu)) return new DropdownMenu()
+  self.activeDropdown = {}
+  self.dropdownButtons = {}
+  self.tail = '-dropDown'
 
-    self.activeDropdown = {};
-    self.dropdownButtons = {};
-    self.tail = '-dropDown';
-
-    // 이건 한번만 해주면 되는 일이라 여기로 빼 주었다.
-    window.onclick = function (event) {
-        if (!event.target.classList.contains('dd-button') && self.activeDropdown.element) {
-            self.activeDropdown.element.style.display = 'none';
-        }
-    };
-
+  // 이건 한번만 해주면 되는 일이라 여기로 빼 주었다.
+  window.onclick = function (event) {
+    if (!event.target.classList.contains('dd-button') && self.activeDropdown.element) {
+      self.activeDropdown.element.style.display = 'none'
+    }
+  }
 }
 
 DropdownMenu.prototype.makeDropdownButton = function (parentElement) {
-    var self = this;
-    if(parentElement.id === undefined) return;
-    var button = self.setInitialElements(parentElement);
-    self.dropdownButtons[parentElement.id] = button;
-};
+  var self = this
+  if (parentElement.id === undefined) return
+  parentElement.className += ' dd-parent'
+  var button = self.setInitialElements(parentElement)
+  self.dropdownButtons[parentElement.id] = button
+}
 
 DropdownMenu.prototype.setInitialElements = function (parentElement) {
-    var self = this;
+  var self = this
 
-    var topDiv = document.createElement('div');
-    topDiv.className = 'dropdown';
-    topDiv.id = parentElement.id + self.tail;
+  var topDiv = document.createElement('div')
+  topDiv.className = 'dropdown'
+  topDiv.id = parentElement.id + self.tail
 
-    var div = document.createElement('div');
-    div.className = 'dd-button';
+  var div = document.createElement('div')
+  div.className = 'dd-button'
 
-    var ul = document.createElement('ul');
-    ul.className = 'dd-menu';
+  var ul = document.createElement('ul')
+  ul.className = 'dd-menu'
 
-    topDiv.appendChild(div);
-    topDiv.appendChild(ul);
-    parentElement.appendChild(topDiv);
-    self.setEventListener(topDiv);
+  topDiv.appendChild(div)
+  topDiv.appendChild(ul)
+  parentElement.appendChild(topDiv)
+  self.setEventListener(topDiv)
 
-    return topDiv;
-};
+  return topDiv
+}
 
 // 이건 내부에서만 사용 할 것이다.
 DropdownMenu.prototype.setEventListener = function (element) {
-    var self = this;
-    if (!element.id.includes('-dropDown')) return;
-    element.addEventListener('click', function (event) {
-        // 다른 드롭 다운 버튼을 누르면 원래 열려 있던 것이 없어진다.
-        event.stopPropagation();
-        if (self.activeDropdown.id && self.activeDropdown.id !== element.id) {
-            self.activeDropdown.element.style.display = 'none';
-        }
+  var self = this
+  if (!element.id.includes('-dropDown')) return
+  element.addEventListener('click', function (event) {
+    // 다른 드롭 다운 버튼을 누르면 원래 열려 있던 것이 없어진다.
+    event.stopPropagation()
+    if (self.activeDropdown.id && self.activeDropdown.id !== element.id) {
+      self.activeDropdown.element.style.display = 'none'
+    }
 
-        self.activeDropdown.id = element.id;
-        self.activeDropdown.element = element.children[1];
-        element.children[1].style.display = 'block';
-    });
-
-};
+    self.activeDropdown.id = element.id
+    self.activeDropdown.element = element.children[1]
+    element.children[1].style.display = 'block'
+  })
+}
 
 DropdownMenu.prototype.addMenu = function (parentId, newMenu, callback) {
-    var self = this;
-    // 현재 element의 dd-menu의 innerHTML에 <li> newMenuString </li>이런식으로 추가한다.
-    var li = document.createElement('li');
-    li.innerHTML = newMenu;
-    if (callback) {
-        li.addEventListener('click', callback);
-    }
-    // 파일 폴더에 버튼 1개씩 달 것 이고 파일 폴더는 유일하니까 id도 유일하다.
-    // id는 원래 고유한 값이다.
-    self.dropdownButtons[parentId].children[1].appendChild(li);
-};
+  var self = this
+  // 현재 element의 dd-menu의 innerHTML에 <li> newMenuString </li>이런식으로 추가한다.
+  var li = document.createElement('li')
+  li.innerHTML = newMenu
+  if (callback) {
+    li.addEventListener('click', callback)
+  }
+  // 파일 폴더에 버튼 1개씩 달 것 이고 파일 폴더는 유일하니까 id도 유일하다.
+  // id는 원래 고유한 값이다.
+  self.dropdownButtons[parentId].children[1].appendChild(li);
+}
 
-module.exports = DropdownMenu;
+module.exports = DropdownMenu
 
 },{}],451:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
@@ -45094,19 +45072,6 @@ function TabContainer () {
   self.tabs = []
 }
 
-// TabContainer.prototype.fileOpened = function (title) {
-//   var self = this
-//   var lastTab = self.dom.querySelector('.active.tab')
-//   if (lastTab) lastTab.className = 'tab'
-//   for (var i = 0; i < self.tabs.length; i++) {
-//     if (self.tabs[i].title === title) {
-//       self.tabs[i].setActive()
-//       return
-//     }
-//   }
-//   self.newTab(title)
-// }
-
 TabContainer.prototype.newTab = function (title, view) {
   var self = this
 
@@ -45313,10 +45278,10 @@ TreeView.prototype.addFile = function (parentElement, file) {
 
   // Render file
   var el = document.createElement('li')
-  el.className = 'file'
+  el.className = 'file file-node'
 
   var a = document.createElement('a')
-  a.className = 'filelink'
+  a.className = 'filelink tree_label'
   a.id = file.path
   a.innerHTML = file.name
   a.addEventListener('click', function (e) {
@@ -45356,17 +45321,21 @@ TreeView.prototype.addDir = function (parentElement, file) {
   var self = this
 
   var el = document.createElement('li')
-
-  var label = document.createElement('label')
-  // label.setAttribute('for', file.path)
-  label.id = file.path
-  label.innerHTML = file.name
-  // label.addEventListener('click', self._handleFolderClick.bind(self))
+  el.className = 'dir file-node'
 
   var input = document.createElement('input')
   input.id = file.path
   input.checked = true
   input.type = 'checkbox'
+
+  var label = document.createElement('label')
+  label.className = 'dirname tree_label'
+  label.id = file.path
+  label.innerHTML = file.name
+  label.addEventListener('click', function (e) {
+    // console.log('check dir path: ' + file.path)
+    input.checked = !input.checked
+  })
 
   var ol = document.createElement('ol')
   self.render(file.nodes, ol)
@@ -45400,8 +45369,8 @@ TreeView.prototype.addDir = function (parentElement, file) {
     })
   })
 
-  el.appendChild(label)
   el.appendChild(input)
+  el.appendChild(label)
   el.appendChild(ol)
   parentElement.appendChild(el)
 }
@@ -45611,31 +45580,7 @@ NetworkManager.prototype.fileOperation = function (optype, node) {
     })
   }
 }
-// TODO: remove it when bindCodeMirror works fine.
-// observer for Y-Text data
-// NetworkManager.prototype.onObserver = function (contentID, type) {
-//   var self = this
-//   setTimeout(function () {
-//     debug('observer setting: ' + contentID)
-//     if (self.observedInstances[contentID]) self.offObserver(contentID)
-//     if (type === 'text') {
-//       self.observedInstances[contentID] = self._onYTextAdd.bind(self, contentID)
-//     } else if (type === 'replydb') {
-//       self.observedInstances[contentID] = self._onReplyAdd.bind(self, contentID)
-//     } else if (type === 'quilljs') {
-//       self.observedInstances[contentID] = self._onYRichtextAdd.bind(self, contentID)
-//     } else return
-//     self.observedInstances[contentID + 'target'] = self.yFSNodes.get(contentID)
-//     debug('observe: ' + typeof self.observedInstances[contentID + 'target'])
-//     self.observedInstances[contentID + 'target'].observe(self.observedInstances[contentID])
-//   }, 100)
-// }
-// NetworkManager.prototype.offObserver = function (contentID) {
-//   var self = this
-//   self.observedInstances[contentID + 'target'].unobserve(self.observedInstances[contentID])
-//   delete self.observedInstances[contentID + 'target']
-//   delete self.observedInstances[contentID]
-// }
+
 NetworkManager.prototype.getContent = function (contentID, type) {
   var self = this
   if (type === 'text') return self.getFileByContentID(contentID).toString()
@@ -45806,34 +45751,6 @@ NetworkManager.prototype.deleteSubNodes = function (yfsikeys, parentPath) {
     })
   }
 }
-
-// TODO: delete after finish testing bindCodeMirror method
-// NetworkManager.prototype.changeTextFile = function (contentID, delta) {
-//   var self = this
-//   self.onceReady(function () {
-//     self.mutualExcluse(contentID, function () {
-//       var ytext = self.getFileByContentID(contentID)
-//       if (!ytext) return
-//
-//       // apply the delta to the ytext instance
-//       var start = delta.start
-//
-//       // apply the delete operation first
-//       if (delta.removed.length > 0) {
-//         var delLength = 0
-//         for (var j = 0; j < delta.removed.length; j++) {
-//           delLength += delta.removed[j].length
-//         }
-//         // "enter" is also a character in our case
-//         delLength += delta.removed.length - 1
-//         ytext.delete(start, delLength)
-//       }
-//
-//       // apply insert operation
-//       insertChunked(ytext, start, delta.text.join('\n'))
-//     })
-//   })
-// }
 
 NetworkManager.prototype.changeSelection = function (data) {
   var self = this

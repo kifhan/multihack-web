@@ -25,7 +25,6 @@ function CodeEditor (options) {
   self.textarea = textarea
 
   self._cm = CodeMirror(function (elt) {
-    // elt.className += " view code-editor"
     self.textarea.parentNode.replaceChild(elt, self.textarea)
     self.textarea = elt
   }, {
@@ -79,13 +78,6 @@ CodeEditor.prototype._onSelectionChange = function (cm, change) {
 
   var ranges = change.ranges.map(self._putHeadBeforeAnchor)
 
-  // self.emit('selection', {
-  //   filePath: self._workingFile.path,
-  //   change: {
-  //     type: 'selection',
-  //     ranges: ranges
-  //   }
-  // })
   self._remote.changeSelection({
     filePath: self._workingFile.path,
     change: {

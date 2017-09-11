@@ -75,10 +75,10 @@ TreeView.prototype.addFile = function (parentElement, file) {
 
   // Render file
   var el = document.createElement('li')
-  el.className = 'file'
+  el.className = 'file file-node'
 
   var a = document.createElement('a')
-  a.className = 'filelink'
+  a.className = 'filelink tree_label'
   a.id = file.path
   a.innerHTML = file.name
   a.addEventListener('click', function (e) {
@@ -118,17 +118,21 @@ TreeView.prototype.addDir = function (parentElement, file) {
   var self = this
 
   var el = document.createElement('li')
-
-  var label = document.createElement('label')
-  // label.setAttribute('for', file.path)
-  label.id = file.path
-  label.innerHTML = file.name
-  // label.addEventListener('click', self._handleFolderClick.bind(self))
+  el.className = 'dir file-node'
 
   var input = document.createElement('input')
   input.id = file.path
   input.checked = true
   input.type = 'checkbox'
+
+  var label = document.createElement('label')
+  label.className = 'dirname tree_label'
+  label.id = file.path
+  label.innerHTML = file.name
+  label.addEventListener('click', function (e) {
+    // console.log('check dir path: ' + file.path)
+    input.checked = !input.checked
+  })
 
   var ol = document.createElement('ol')
   self.render(file.nodes, ol)
@@ -162,8 +166,8 @@ TreeView.prototype.addDir = function (parentElement, file) {
     })
   })
 
-  el.appendChild(label)
   el.appendChild(input)
+  el.appendChild(label)
   el.appendChild(ol)
   parentElement.appendChild(el)
 }
