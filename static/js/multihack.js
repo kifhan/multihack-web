@@ -42921,11 +42921,13 @@ CodeEditor.prototype.open = function (filePath, remote, reply) {
     self.highlight(selections)
   }
   self._remote.on('changeSelection', self._selectionevent)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 
 CodeEditor.prototype.close = function () {
   var self = this
-  self._workingFile = null
 
   self._remote.unbindCodeMirror(self._workingFile.contentID)
 
@@ -42933,7 +42935,9 @@ CodeEditor.prototype.close = function () {
   self._cm.off('beforeSelectionChange', self._onSelectionChangebind)
 
   self._remote.removeListener('changeSelection', self._selectionevent)
+  self._workingFile.removeListener('change', self._changeFileInfo)
 
+  self._workingFile = null
   self.container.childNodes.forEach(function (element) {
     self.container.removeChild(element)
   })
@@ -43071,10 +43075,14 @@ DocEditor.prototype.open = function (filePath, remote) {
   self._remote = remote
   self._workingFile = FileSystem.getFileByPath(filePath)
   if (self._remote && self._workingFile) self._remote.bindQuill(self._workingFile.contentID, self._quill)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 DocEditor.prototype.close = function () {
   var self = this
   self._remote.unbindQuill(self._workingFile.contentID)
+  self._workingFile.removeListener('change', self._changeFileInfo)
   self._workingFile = null
   // TODO: destroy
   self._quill.disable()
@@ -43130,11 +43138,15 @@ HtmlEditor.prototype.open = function (filePath, remote) {
 
   self._remote = remote
   if (remote && self._workingFile) self.dom.innerHTML = self._remote.yFSNodes.get(self._workingFile.contentID)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 HtmlEditor.prototype.close = function () {
   var self = this
   self.dom.innerHTML = ''
   self._remote = null
+  self._workingFile.removeListener('change', self._changeFileInfo)
   self._workingFile = null
 }
 HtmlEditor.prototype.getWorkingFile = function () {
@@ -43172,13 +43184,15 @@ function Reply (options) {
   self.timeticks = []
   self.timeouts = []
   self.contentID = options.contentID
+  if (!self.contentID) {
+    console.warn('Can\'t initiate reply instance!')
+  }
 
   self.setReplyPanel(self.cm)
 }
 
-Reply.prototype.setReplies = function (contentID, cm, replies) {
+Reply.prototype.setReplies = function (cm, replies) {
   var self = this
-  self.contentID = contentID
   self.reinputs = []
   self.cm = cm
   if (self.timeticks) {
@@ -43670,6 +43684,14 @@ FileSystem.prototype.mkfile = function (yfsnode) { // Makes an empty file
   return false
 }
 
+FileSystem.prototype.changeFileInfoSync = function (yfsnode) { // Makes an empty file
+  var self = this
+  if (self.existsBycontentID(yfsnode.contentID)) {
+    self.getFileByContentID(yfsnode.contentID).change(yfsnode)
+    return true
+  }
+  return false
+}
 FileSystem.prototype.changeDirInfoSync = function (yfsnode) { // Makes a directory
   var self = this
   if (self.existsBycontentID(yfsnode.contentID)) {
@@ -43680,10 +43702,11 @@ FileSystem.prototype.changeDirInfoSync = function (yfsnode) { // Makes a directo
   }
   return false
 }
-FileSystem.prototype.changeFileInfoSync = function (yfsnode) { // Makes an empty file
+FileSystem.prototype.changeFileInfo = function (path, newMeta) { // Makes an empty file
   var self = this
-  if (self.existsBycontentID(yfsnode.contentID)) {
-    self.getFileByContentID(yfsnode.contentID).change(yfsnode)
+  var node = self.getFileByPath(path)
+  if (node) {
+    node.change(newMeta)
     return true
   }
   return false
@@ -43698,15 +43721,6 @@ FileSystem.prototype.changeDirInfo = function (path, newMeta) { // Makes a direc
   }
   return false
 }
-FileSystem.prototype.changeFileInfo = function (path, newMeta) { // Makes an empty file
-  var self = this
-  var node = self.getFileByPath(path)
-  if (node) {
-    node.change(newMeta)
-    return true
-  }
-  return false
-}
 FileSystem.prototype.changeSubDirRecursive = function (parentPath, nodeList) { // Makes a directory
   var self = this
   nodeList.forEach(function (node) {
@@ -43715,27 +43729,9 @@ FileSystem.prototype.changeSubDirRecursive = function (parentPath, nodeList) { /
   })
 }
 
-FileSystem.prototype.getContained = function (path) {
-  var self = this
-
-  var dir = self.getFileByPath(path)
-  if (dir.type !== util.DIRECTORY_TYPE) return [dir]
-
-  var contained = []
-
-  dir.nodes.forEach(function (node) {
-    self.getContained(node.path).forEach(function (c) {
-      contained.push(c)
-    })
-  })
-
-  return contained
-}
-
 // Recursive node search with file path
 FileSystem.prototype.getFileByPath = function (path, nodeList) {
   var self = this
-  console.log('check ' + path)
   if (path === '@' || path === '') return self._tree
 
   nodeList = nodeList || self._tree.nodes
@@ -43776,13 +43772,31 @@ FileSystem.prototype.existsBycontentID = function (contentID) {
   return !!self.getFileByContentID(contentID)
 }
 
+// get all files on parentPath
+FileSystem.prototype.getSubFilesInPath = function (path) { // Makes a directory
+  var self = this
+  var node = self.getFileByPath(path)
+  var fileContainer = []
+  if (node) {
+    self.getSubFilesRecursive(node.path, node.nodes, fileContainer)
+  }
+  return fileContainer
+}
+FileSystem.prototype.getSubFilesRecursive = function (parentPath, nodeList, fileContainer) { // Makes a directory
+  var self = this
+  nodeList.forEach(function (node) {
+    fileContainer.push(node)
+    if (node.type === util.DIRECTORY_TYPE) self.getSubFilesRecursive(node.path, node.nodes, fileContainer)
+  })
+  return fileContainer
+}
+
 // Deletes a file/directory on a path
 FileSystem.prototype.delete = function (path) {
   var self = this
-  var parentPath = util.getParentPath(path)
-  var file = self.getFileByPath(parentPath)
-  if (file) {
-    file.nodes = file.nodes.filter(function (e) {
+  var parentFile = self.getFileByPath(util.getParentPath(path))
+  if (parentFile) {
+    parentFile.nodes = parentFile.nodes.filter(function (e) {
       if (e.path === path) return false
       return true
     })
@@ -43950,7 +43964,15 @@ function Multihack (config) {
   config = config || {}
   // config: { hostname }
 
-  var _openView = function (e) {
+  self.execWhenTargetSet = function (target, f) {
+    function ft () {
+      if (target) f()
+      else setTimeout(ft, 50)
+    }
+    setTimeout(ft, 50)
+  }
+
+  self._openView = function (e) {
     var view = Interface.workspacePane.isOnPane(e.path)
     if (view) {
       Interface.workspacePane.changeView(view)
@@ -43960,46 +43982,44 @@ function Multihack (config) {
     // var filenode = FileSystem.getFileByPath(e.path)
     debug('open view with type: ' + filenode.type)
 
-    if (filenode.type === 'text') {
-      view = new CodeEditor()
-      var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
-      view.open(e.path, self.netManager, reply)
-      // setting an observer for document sync.
-      // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
+    self.execWhenTargetSet(filenode.contentID, function () {
+      if (filenode.type === 'text') {
+        view = new CodeEditor()
+        var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
+        view.open(e.path, self.netManager, reply)
+        // setting an observer for document sync.
+        // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
 
-      // Load and set reply data after file opens.
-      // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
-    } else if (filenode.type === 'quilljs') {
-      view = new DocEditor()
-      view.open(e.path, self.netManager)
-      // self.netManager.bindQuill(e.contentID, view._quill)
-      // } else if(util.findFileType(e.path) === 'image') {
-      //   view = new HtmlEditor({content:''})
-      //   view.open(e.path,self.netManager)
-      //   // TODO: image viewer 만든다.
-    } else {
-      view = new HtmlEditor({
-        content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
-      })
-      view.open(e.path, null)
-    }
+        // Load and set reply data after file opens.
+        // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
+      } else if (filenode.type === 'quilljs') {
+        view = new DocEditor()
+        view.open(e.path, self.netManager)
+        // self.netManager.bindQuill(e.contentID, view._quill)
+        // } else if(util.findFileType(e.path) === 'image') {
+        //   view = new HtmlEditor({content:''})
+        //   view.open(e.path,self.netManager)
+        //   // TODO: image viewer 만든다.
+      } else {
+        view = new HtmlEditor({
+          content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
+        })
+        view.open(e.path, null)
+      }
 
-    Interface.workspacePane.addView(filenode.name, view)
+      Interface.workspacePane.addView(filenode.name, view)
+    })
   }
 
   Interface.workspacePane.on('viewChange', function (e) {
     // e.view is focused view
-    // if (e.view.getWorkingFile().type === 'text') {
-    //   var filepath = e.view.getWorkingFile().path
-    //   Reply.setReplies(filepath + '.replydb', e.view._cm, self.netManager.getReplyContent(filepath + '.replydb'))
-    // }
   })
 
   Interface.on('openFile', function (e) {
     // call when gui opens file.
     // gui에서 파일을 열때 호출한다.
     debug('interface try to open file: ' + e.path)
-    _openView(e)
+    self._openView(e)
   })
 
   Interface.on('addFile', function (e) {
@@ -44020,7 +44040,7 @@ function Multihack (config) {
         replydbID: filenode.replydbID
       })
       Interface.treeview.rerender(FileSystem.getTree())
-      _openView(e)
+      self._openView(e)
     }
   })
 
@@ -44077,21 +44097,25 @@ function Multihack (config) {
     Interface.confirmDelete(dir.name, function () {
       // confirm deleting directory
       // 폴더 삭제 확인 모달 창을 띄우고 사용자가 확인하면 호출된다.
-      self.netManager.deleteFile(e.path)
-      FileSystem.getContained(e.path).forEach(function (node) {
-        FileSystem.delete(node.path)
-        // 폴더 내부 파일도 제거한다.
+      FileSystem.getSubFilesInPath(e.path).forEach(function (node) {
+        // 폴더에 포함된 파일이 Pane에 열려있으면 닫는다.
+        if (node.type !== util.DIRECTORY_TYPE) {
+          var view = Interface.workspacePane.isOnPane(node.path)
+          if (view) Interface.workspacePane.closeView(view)
+        }
       })
+      FileSystem.delete(e.path)
+      self.netManager.deleteFile(e.path)
       Interface.treeview.rerender(FileSystem.getTree())
     })
   })
 
   Interface.on('deleteFile', function (e) {
+    if (!e.path) return
     var workingFile = e.file
     // var workingFile = FileSystem.getFileByPath(e.path)
     Interface.confirmDelete(workingFile.name, function () {
       // Pane에 열려있으면 닫는다.
-      if (!e.path) return
       var view = Interface.workspacePane.isOnPane(e.path)
       if (view) Interface.workspacePane.closeView(view)
       // 파일을 삭제한다.
@@ -44328,7 +44352,7 @@ function Interface () {
     self.emit('openFile', e)
   })
 
-  self.treeview.on('removeDir', function (e) {
+  self.treeview.on('deleteDir', function (e) {
     self.emit('deleteDir', e)
   })
 
@@ -44868,6 +44892,7 @@ var split = require('split.js')
 var TabContainer = require('./tabcontainer')
 var HtmlViewer = require('../editor/htmlviewer')
 var lang = require('./lang/lang')
+var FileSystem = require('./../filesystem/filesystem')
 var lg = lang.get.bind(lang)
 
 inherits(PaneManager, EventEmitter)
@@ -44921,7 +44946,7 @@ function PaneManager (options) {
     self.changeView(event.view)
   })
   self.focusedPane.tabcontainer.on('close', function (event) {
-    self.closeView(event.view)
+    self.closeView(event.view, event.tab)
   })
 
   self.container.appendChild(self.focusedPane.dom)
@@ -44935,7 +44960,7 @@ PaneManager.prototype.isOnPane = function (filepath) {
   var checkview = false
   self.focusedPane.viewlist.forEach(function (view) {
     // console.log('check file exist: ' + filepath + ' ' + view.getWorkingFile().path)
-    if (view.getWorkingFile().path === filepath) { checkview = view }
+    if (view.getWorkingFile() === FileSystem.getFileByPath(filepath)) { checkview = view }
   }, this)
   return checkview
 }
@@ -44976,15 +45001,16 @@ PaneManager.prototype.changeView = function (view) {
 
   self.emit('viewChange', {view: view})
 }
-PaneManager.prototype.closeView = function (view) {
+PaneManager.prototype.closeView = function (view, tab) {
   var self = this
-  if (self.focusedPane.viewlist.indexOf(view) !== -1) {
-    var tempview = self.focusedPane.viewlist[self.focusedPane.viewlist.indexOf(view)]
+  var i = self.focusedPane.viewlist.indexOf(view)
+  if (i !== -1) {
+    var tempview = self.focusedPane.viewlist[i]
+    self.focusedPane.tabcontainer.closeTab(tempview.bindedTab)
+
     self.focusedPane.dom.removeChild(tempview.container)
-    self.focusedPane.viewlist.splice(self.focusedPane.viewlist.indexOf(view), 1)
+    self.focusedPane.viewlist.splice(i, 1)
     view.close()
-    // observe, bind 풀기
-    // editer close, distroy
     self.emit('closeview', {view: view})
     // switch vew
     if (self._lastview && self._lastview !== view) {
@@ -44998,7 +45024,7 @@ PaneManager.prototype.closeView = function (view) {
 
 module.exports = PaneManager
 
-},{"../editor/htmlviewer":443,"./lang/lang":452,"./tabcontainer":457,"events":354,"inherits":363,"split.js":406}],456:[function(require,module,exports){
+},{"../editor/htmlviewer":443,"./../filesystem/filesystem":447,"./lang/lang":452,"./tabcontainer":457,"events":354,"inherits":363,"split.js":406}],456:[function(require,module,exports){
 var mustache = require('mustache')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
@@ -45007,10 +45033,10 @@ var template = '<span>{{title}}</span><div class="close">ⓧ</div>'
 
 inherits(Tab, EventEmitter)
 
-function Tab (title,bindedView) {
+function Tab (title, bindedView) {
   var self = this
   if (!(self instanceof Tab)) return new Tab()
-  if(!bindedView) throw Error('Tab: can not create tab without view!')
+  if (!bindedView) throw Error('Tab: can not create tab without view!')
 
   self.dom = document.createElement('div')
   self.dom.className = 'tab active'
@@ -45046,10 +45072,11 @@ Tab.prototype.rename = function (newtitle) {
   self.title = newtitle
 
   self.dom.innerHTML = mustache.render(template, {title: newtitle})
-  self.dom.querySelector('.close').addEventListener('click', self._onclose.bind(self))
+  self.dom.querySelector('.close').addEventListener('click', self.close.bind(self))
 }
 
 module.exports = Tab
+
 },{"events":354,"inherits":363,"mustache":371}],457:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('inherits')
@@ -45096,12 +45123,14 @@ TabContainer.prototype.newTab = function (title, view) {
   })
 
   tab.on('close', function () {
-    self.dom.removeChild(tab.dom)
-    // self.tabs.splice(self.tabs.indexOf(tab), 1)
-    self.emit('close', {
-      tab: tab,
-      view: tab.bindedView
-    })
+    if (self.dom === tab.dom.parentNode) {
+      self.dom.removeChild(tab.dom)
+      self.deleteTab(tab)
+      self.emit('close', {
+        tab: tab,
+        view: tab.bindedView
+      })
+    }
   })
 
   self.tabs.push(tab)
@@ -45115,8 +45144,14 @@ TabContainer.prototype.newTab = function (title, view) {
 }
 TabContainer.prototype.deleteTab = function (tab) {
   var self = this
-  self.tabs.splice(self.tabs.indexOf(tab), 1)
-  delete tab
+  if (self.tabs.indexOf(tab) !== -1) self.tabs.splice(self.tabs.indexOf(tab), 1)
+  // delete tab
+}
+TabContainer.prototype.closeTab = function (tab) {
+  var self = this
+  if (self.dom !== tab.dom.parentNode) return
+  self.dom.removeChild(tab.dom)
+  self.deleteTab(tab)
 }
 
 TabContainer.prototype.fileRenamed = function (title, newtitle) {
@@ -45140,6 +45175,7 @@ TabContainer.prototype.fileDeleted = function (title) {
 }
 
 module.exports = TabContainer
+
 },{"./tab":456,"events":354,"inherits":363}],458:[function(require,module,exports){
 var dict = {}
 var lang = require('./lang/lang')
@@ -45482,8 +45518,7 @@ function NetworkManager (opts) {
 
     // set observe on File System
     self.yFSIndex.observe(function (event) {
-      self.mutualExcluse(event.value.contentID, function () {
-        debug('give me everything: ' + event.value.name)
+      self.mutualExcluse(event.name, function () {
         self.fileOperation(event.type, event.value)
       })
     })
@@ -45740,18 +45775,18 @@ NetworkManager.prototype.renameSubNodes = function (yfsikeys, oldParentPath, par
   }
 }
 
-NetworkManager.prototype.deleteFile = function (contentID) {
+NetworkManager.prototype.deleteFile = function (path) {
   var self = this
   self.onceReady(function () {
-    self.mutualExcluse(contentID, function () {
-      var node = self.getFileMetaByContentID(contentID)
+    var node = self.getFileMetaByPath(path)
+    self.mutualExcluse(node.contentID, function () {
       if (node.type === util.DIRECTORY_TYPE) {
         var yfsikeys = self.yFSIndex.keys()
         self.deleteSubNodes(yfsikeys, node.parentPath + '/' + node.name)
       }
-      if (self.getFileByContentID(contentID)) self.yFSNodes.delete(contentID)
+      if (self.getFileByContentID(node.contentID)) self.yFSNodes.delete(node.contentID)
       if (node.replydbID) self.yFSNodes.delete(node.replydbID)
-      self.yFSIndex.delete(contentID)
+      self.yFSIndex.delete(node.contentID)
     })
   })
 }
@@ -45827,7 +45862,7 @@ NetworkManager.prototype.unbindCodeMirror = function (contentID) {
     ytext.unobserve(binding.yCallback)
     binding.editor.off('changes', binding.editorCallback)
     self.getFileByContentID(binding.replydbID).unobserve(binding.yReplyCallback)
-    binding.editor.removeListener('changeReply', binding.editorCallback)
+    binding.reply.removeListener('changeReply', binding.replyCallback)
     delete self.observedInstances[contentID]
   }
 }
@@ -45896,12 +45931,15 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   ytext.observe(yCallback)
 
   // set Reply on CodeMirror
-  replyInstance.setReplies(replydbID, editorInstance, self.getReplyContent(replydbID))
+  replyInstance.setReplies(editorInstance, self.getReplyContent(replydbID))
   // yReplyCallback({type: 'insert', values: yreply.toArray()})
 
-  function replyCallback (contentID, optype, opval) {
+  function replyCallback (data) {
     self.onceReady(function () {
       mutualExcluse(function () {
+        var contentID = data.contentID
+        var optype = data.optype
+        var opval = data.opval
         var replydb = self.getFileByContentID(contentID)
         if (optype === 'insert') {
           var ridx = replydb.toArray().length
@@ -45982,6 +46020,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
     yCallback: yCallback,
     editorCallback: codeMirrorCallback,
     replydbID: replydbID,
+    reply: replyInstance,
     yReplyCallback: yReplyCallback,
     replyCallback: replyCallback
   }
@@ -46457,8 +46496,6 @@ module.exports = VoiceCall
 
 },{"getusermedia":357}],462:[function(require,module,exports){
 (function (global){
-/* globals Y */
-
 var Y = require('yjs')
 var define = global.define
 global.define = null
@@ -46509,12 +46546,12 @@ class Connector extends Y.AbstractConnector {
 Connector.prototype._setupSocket = function () {
   var self = this
 
-  self.socket.on('connect', function() {
+  self.socket.on('connect', function () {
     console.log('connected to socket server!')
-    self.socket.emit('joinRoom', {room: self.room, nickname: self.nickname, nop2p: self.nop2p })
+    self.socket.emit('joinRoom', { room: self.room, nickname: self.nickname, nop2p: self.nop2p })
     self.userJoined('server', 'master')
   })
-  
+
   self.socket.on('yjsSocketMessage', function (message, id) {
     if (message.type != null) {
       if (message.type === 'sync done') {
@@ -46547,7 +46584,7 @@ Connector.prototype._setupSocket = function () {
   self.socket.on('peer-leave', function (data) {
     if (!self.nop2p && !data.nop2p) return // will disconnect p2p
 
-    for (var i=0; i<self.peers.length; i++) {
+    for (var i = 0; i < self.peers.length; i++) {
       if (self.peers[i].id === data.id) {
         self._onLostPeer(self.peers[i])
         self.peers.splice(i, 1)
@@ -46570,7 +46607,6 @@ Connector.prototype._setupP2P = function (room, nickname) {
   self.events('client', self._client)
 
   self._client.on('ready', function (peerIDs) {
-
     self.events('voice', {
       client: self._client,
       socket: self.socket
@@ -46585,10 +46621,10 @@ Connector.prototype._setupP2P = function (room, nickname) {
     //   })
     // }
     peerIDs = peerIDs || []
-    for (var i=0; i<peerIDs.length; i++) {
+    for (var i = 0; i < peerIDs.length; i++) {
       if (peerIDs[i] === self._client.id) continue
       self._client.connect(peerIDs[i], {
-        wrtc:self.wrtc,
+        wrtc: self.wrtc,
         reconnectTimer: 100
       }, {
         nickname: self.nickname
@@ -46599,7 +46635,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
   self._client.on('request', function (request) {
     if (request.metadata.voice) return
     request.accept({
-      wrtc:self.wrtc,
+      wrtc: self.wrtc,
       reconnectTimer: 100
     }, {
       nickname: self.nickname
@@ -46611,7 +46647,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
     peer.metadata.nickname = peer.metadata.nickname || 'Guest'
 
     // throttle outgoing
-    var throttle = new Throttle({rate:300*1000, chunksize: 15*1000})
+    var throttle = new Throttle({rate: 300 * 1000, chunksize: 15 * 1000})
     peer.wire = new Wire()
     peer.originalSend = peer.send
     peer.send = function (chunk) {
@@ -46627,7 +46663,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
     self.peers.push(peer)
 
     peer.wire.on('yjs', function (message) {
-      if (peer.connected)  {
+      if (peer.connected) {
         self.receiveMessage(peer.id, message)
       } else {
         if (!peer.destroyed) {
@@ -46652,15 +46688,13 @@ Connector.prototype._setupP2P = function (room, nickname) {
       console.warn('connection to peer closed')
       self._destroyPeer(peer)
     })
-
-
   })
 }
 
 Connector.prototype._destroyPeer = function (peer) {
   var self = this
 
-  for (var i=0; i<self.peers.length; i++) {
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].id === peer.id) {
       self.peers.splice(i, 1)
       break
@@ -46699,9 +46733,9 @@ Connector.prototype.disconnect = function () {
 Connector.prototype.destroy = function () {
   var self = this
   this.disconnect()
-  
+
   // destroy p2p connection
-  for (var i=0; i<self.peers.length; i++) {
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].nop2p || self.nop2p) self.peers[i] = null
     else self.peers[i].destroy()
   }
@@ -46733,8 +46767,8 @@ Connector.prototype.send = function (id, message) {
   console.log('client send to one')
 
   self.socket.emit('yjsSocketMessage', message, id)
-  if(self.nop2p) return;
-  for (var i=0; i<self.peers.length; i++) {
+  if (self.nop2p) return
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].id !== id) continue
     if (!self.peers[i].nop2p) {
       self.peers[i].wire.yjs(message)
@@ -46746,11 +46780,9 @@ Connector.prototype.send = function (id, message) {
 Connector.prototype.broadcast = function (message) {
   var self = this
   message.room = self.room
-  console.log('client broadcast')
-
   self.socket.emit('yjsSocketMessage', message)
-  if(self.nop2p) return;
-  for (var i=0; i<self.peers.length; i++) {
+  if (self.nop2p) return
+  for (var i = 0; i < self.peers.length; i++) {
     if (!self.peers[i].nop2p) {
       self.peers[i].wire.yjs(message)
     }

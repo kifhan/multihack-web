@@ -49,10 +49,14 @@ DocEditor.prototype.open = function (filePath, remote) {
   self._remote = remote
   self._workingFile = FileSystem.getFileByPath(filePath)
   if (self._remote && self._workingFile) self._remote.bindQuill(self._workingFile.contentID, self._quill)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 DocEditor.prototype.close = function () {
   var self = this
   self._remote.unbindQuill(self._workingFile.contentID)
+  self._workingFile.removeListener('change', self._changeFileInfo)
   self._workingFile = null
   // TODO: destroy
   self._quill.disable()

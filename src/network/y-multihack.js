@@ -1,5 +1,3 @@
-/* globals Y */
-
 var Y = require('yjs')
 var define = global.define
 global.define = null
@@ -50,12 +48,12 @@ class Connector extends Y.AbstractConnector {
 Connector.prototype._setupSocket = function () {
   var self = this
 
-  self.socket.on('connect', function() {
+  self.socket.on('connect', function () {
     console.log('connected to socket server!')
-    self.socket.emit('joinRoom', {room: self.room, nickname: self.nickname, nop2p: self.nop2p })
+    self.socket.emit('joinRoom', { room: self.room, nickname: self.nickname, nop2p: self.nop2p })
     self.userJoined('server', 'master')
   })
-  
+
   self.socket.on('yjsSocketMessage', function (message, id) {
     if (message.type != null) {
       if (message.type === 'sync done') {
@@ -88,7 +86,7 @@ Connector.prototype._setupSocket = function () {
   self.socket.on('peer-leave', function (data) {
     if (!self.nop2p && !data.nop2p) return // will disconnect p2p
 
-    for (var i=0; i<self.peers.length; i++) {
+    for (var i = 0; i < self.peers.length; i++) {
       if (self.peers[i].id === data.id) {
         self._onLostPeer(self.peers[i])
         self.peers.splice(i, 1)
@@ -111,7 +109,6 @@ Connector.prototype._setupP2P = function (room, nickname) {
   self.events('client', self._client)
 
   self._client.on('ready', function (peerIDs) {
-
     self.events('voice', {
       client: self._client,
       socket: self.socket
@@ -126,10 +123,10 @@ Connector.prototype._setupP2P = function (room, nickname) {
     //   })
     // }
     peerIDs = peerIDs || []
-    for (var i=0; i<peerIDs.length; i++) {
+    for (var i = 0; i < peerIDs.length; i++) {
       if (peerIDs[i] === self._client.id) continue
       self._client.connect(peerIDs[i], {
-        wrtc:self.wrtc,
+        wrtc: self.wrtc,
         reconnectTimer: 100
       }, {
         nickname: self.nickname
@@ -140,7 +137,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
   self._client.on('request', function (request) {
     if (request.metadata.voice) return
     request.accept({
-      wrtc:self.wrtc,
+      wrtc: self.wrtc,
       reconnectTimer: 100
     }, {
       nickname: self.nickname
@@ -152,7 +149,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
     peer.metadata.nickname = peer.metadata.nickname || 'Guest'
 
     // throttle outgoing
-    var throttle = new Throttle({rate:300*1000, chunksize: 15*1000})
+    var throttle = new Throttle({rate: 300 * 1000, chunksize: 15 * 1000})
     peer.wire = new Wire()
     peer.originalSend = peer.send
     peer.send = function (chunk) {
@@ -168,7 +165,7 @@ Connector.prototype._setupP2P = function (room, nickname) {
     self.peers.push(peer)
 
     peer.wire.on('yjs', function (message) {
-      if (peer.connected)  {
+      if (peer.connected) {
         self.receiveMessage(peer.id, message)
       } else {
         if (!peer.destroyed) {
@@ -193,15 +190,13 @@ Connector.prototype._setupP2P = function (room, nickname) {
       console.warn('connection to peer closed')
       self._destroyPeer(peer)
     })
-
-
   })
 }
 
 Connector.prototype._destroyPeer = function (peer) {
   var self = this
 
-  for (var i=0; i<self.peers.length; i++) {
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].id === peer.id) {
       self.peers.splice(i, 1)
       break
@@ -240,9 +235,9 @@ Connector.prototype.disconnect = function () {
 Connector.prototype.destroy = function () {
   var self = this
   this.disconnect()
-  
+
   // destroy p2p connection
-  for (var i=0; i<self.peers.length; i++) {
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].nop2p || self.nop2p) self.peers[i] = null
     else self.peers[i].destroy()
   }
@@ -274,8 +269,8 @@ Connector.prototype.send = function (id, message) {
   console.log('client send to one')
 
   self.socket.emit('yjsSocketMessage', message, id)
-  if(self.nop2p) return;
-  for (var i=0; i<self.peers.length; i++) {
+  if (self.nop2p) return
+  for (var i = 0; i < self.peers.length; i++) {
     if (self.peers[i].id !== id) continue
     if (!self.peers[i].nop2p) {
       self.peers[i].wire.yjs(message)
@@ -287,11 +282,9 @@ Connector.prototype.send = function (id, message) {
 Connector.prototype.broadcast = function (message) {
   var self = this
   message.room = self.room
-  console.log('client broadcast')
-
   self.socket.emit('yjsSocketMessage', message)
-  if(self.nop2p) return;
-  for (var i=0; i<self.peers.length; i++) {
+  if (self.nop2p) return
+  for (var i = 0; i < self.peers.length; i++) {
     if (!self.peers[i].nop2p) {
       self.peers[i].wire.yjs(message)
     }

@@ -181,11 +181,13 @@ CodeEditor.prototype.open = function (filePath, remote, reply) {
     self.highlight(selections)
   }
   self._remote.on('changeSelection', self._selectionevent)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 
 CodeEditor.prototype.close = function () {
   var self = this
-  self._workingFile = null
 
   self._remote.unbindCodeMirror(self._workingFile.contentID)
 
@@ -193,7 +195,9 @@ CodeEditor.prototype.close = function () {
   self._cm.off('beforeSelectionChange', self._onSelectionChangebind)
 
   self._remote.removeListener('changeSelection', self._selectionevent)
+  self._workingFile.removeListener('change', self._changeFileInfo)
 
+  self._workingFile = null
   self.container.childNodes.forEach(function (element) {
     self.container.removeChild(element)
   })

@@ -34,7 +34,15 @@ function Multihack (config) {
   config = config || {}
   // config: { hostname }
 
-  var _openView = function (e) {
+  self.execWhenTargetSet = function (target, f) {
+    function ft () {
+      if (target) f()
+      else setTimeout(ft, 50)
+    }
+    setTimeout(ft, 50)
+  }
+
+  self._openView = function (e) {
     var view = Interface.workspacePane.isOnPane(e.path)
     if (view) {
       Interface.workspacePane.changeView(view)
@@ -44,46 +52,44 @@ function Multihack (config) {
     // var filenode = FileSystem.getFileByPath(e.path)
     debug('open view with type: ' + filenode.type)
 
-    if (filenode.type === 'text') {
-      view = new CodeEditor()
-      var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
-      view.open(e.path, self.netManager, reply)
-      // setting an observer for document sync.
-      // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
+    self.execWhenTargetSet(filenode.contentID, function () {
+      if (filenode.type === 'text') {
+        view = new CodeEditor()
+        var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
+        view.open(e.path, self.netManager, reply)
+        // setting an observer for document sync.
+        // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.
 
-      // Load and set reply data after file opens.
-      // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
-    } else if (filenode.type === 'quilljs') {
-      view = new DocEditor()
-      view.open(e.path, self.netManager)
-      // self.netManager.bindQuill(e.contentID, view._quill)
-      // } else if(util.findFileType(e.path) === 'image') {
-      //   view = new HtmlEditor({content:''})
-      //   view.open(e.path,self.netManager)
-      //   // TODO: image viewer 만든다.
-    } else {
-      view = new HtmlEditor({
-        content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
-      })
-      view.open(e.path, null)
-    }
+        // Load and set reply data after file opens.
+        // 에디터에 문서가 로딩되면 그 위에 댓글을 로드해서 삽입한다.
+      } else if (filenode.type === 'quilljs') {
+        view = new DocEditor()
+        view.open(e.path, self.netManager)
+        // self.netManager.bindQuill(e.contentID, view._quill)
+        // } else if(util.findFileType(e.path) === 'image') {
+        //   view = new HtmlEditor({content:''})
+        //   view.open(e.path,self.netManager)
+        //   // TODO: image viewer 만든다.
+      } else {
+        view = new HtmlEditor({
+          content: 'The file will not be displayed in the editor because it is either binary, very large or uses an unsupported text encoding.'
+        })
+        view.open(e.path, null)
+      }
 
-    Interface.workspacePane.addView(filenode.name, view)
+      Interface.workspacePane.addView(filenode.name, view)
+    })
   }
 
   Interface.workspacePane.on('viewChange', function (e) {
     // e.view is focused view
-    // if (e.view.getWorkingFile().type === 'text') {
-    //   var filepath = e.view.getWorkingFile().path
-    //   Reply.setReplies(filepath + '.replydb', e.view._cm, self.netManager.getReplyContent(filepath + '.replydb'))
-    // }
   })
 
   Interface.on('openFile', function (e) {
     // call when gui opens file.
     // gui에서 파일을 열때 호출한다.
     debug('interface try to open file: ' + e.path)
-    _openView(e)
+    self._openView(e)
   })
 
   Interface.on('addFile', function (e) {
@@ -104,7 +110,7 @@ function Multihack (config) {
         replydbID: filenode.replydbID
       })
       Interface.treeview.rerender(FileSystem.getTree())
-      _openView(e)
+      self._openView(e)
     }
   })
 
@@ -161,21 +167,25 @@ function Multihack (config) {
     Interface.confirmDelete(dir.name, function () {
       // confirm deleting directory
       // 폴더 삭제 확인 모달 창을 띄우고 사용자가 확인하면 호출된다.
-      self.netManager.deleteFile(e.path)
-      FileSystem.getContained(e.path).forEach(function (node) {
-        FileSystem.delete(node.path)
-        // 폴더 내부 파일도 제거한다.
+      FileSystem.getSubFilesInPath(e.path).forEach(function (node) {
+        // 폴더에 포함된 파일이 Pane에 열려있으면 닫는다.
+        if (node.type !== util.DIRECTORY_TYPE) {
+          var view = Interface.workspacePane.isOnPane(node.path)
+          if (view) Interface.workspacePane.closeView(view)
+        }
       })
+      FileSystem.delete(e.path)
+      self.netManager.deleteFile(e.path)
       Interface.treeview.rerender(FileSystem.getTree())
     })
   })
 
   Interface.on('deleteFile', function (e) {
+    if (!e.path) return
     var workingFile = e.file
     // var workingFile = FileSystem.getFileByPath(e.path)
     Interface.confirmDelete(workingFile.name, function () {
       // Pane에 열려있으면 닫는다.
-      if (!e.path) return
       var view = Interface.workspacePane.isOnPane(e.path)
       if (view) Interface.workspacePane.closeView(view)
       // 파일을 삭제한다.

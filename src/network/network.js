@@ -107,8 +107,7 @@ function NetworkManager (opts) {
 
     // set observe on File System
     self.yFSIndex.observe(function (event) {
-      self.mutualExcluse(event.value.contentID, function () {
-        debug('give me everything: ' + event.value.name)
+      self.mutualExcluse(event.name, function () {
         self.fileOperation(event.type, event.value)
       })
     })
@@ -365,18 +364,18 @@ NetworkManager.prototype.renameSubNodes = function (yfsikeys, oldParentPath, par
   }
 }
 
-NetworkManager.prototype.deleteFile = function (contentID) {
+NetworkManager.prototype.deleteFile = function (path) {
   var self = this
   self.onceReady(function () {
-    self.mutualExcluse(contentID, function () {
-      var node = self.getFileMetaByContentID(contentID)
+    var node = self.getFileMetaByPath(path)
+    self.mutualExcluse(node.contentID, function () {
       if (node.type === util.DIRECTORY_TYPE) {
         var yfsikeys = self.yFSIndex.keys()
         self.deleteSubNodes(yfsikeys, node.parentPath + '/' + node.name)
       }
-      if (self.getFileByContentID(contentID)) self.yFSNodes.delete(contentID)
+      if (self.getFileByContentID(node.contentID)) self.yFSNodes.delete(node.contentID)
       if (node.replydbID) self.yFSNodes.delete(node.replydbID)
-      self.yFSIndex.delete(contentID)
+      self.yFSIndex.delete(node.contentID)
     })
   })
 }
@@ -452,7 +451,7 @@ NetworkManager.prototype.unbindCodeMirror = function (contentID) {
     ytext.unobserve(binding.yCallback)
     binding.editor.off('changes', binding.editorCallback)
     self.getFileByContentID(binding.replydbID).unobserve(binding.yReplyCallback)
-    binding.editor.removeListener('changeReply', binding.editorCallback)
+    binding.reply.removeListener('changeReply', binding.replyCallback)
     delete self.observedInstances[contentID]
   }
 }
@@ -521,12 +520,15 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   ytext.observe(yCallback)
 
   // set Reply on CodeMirror
-  replyInstance.setReplies(replydbID, editorInstance, self.getReplyContent(replydbID))
+  replyInstance.setReplies(editorInstance, self.getReplyContent(replydbID))
   // yReplyCallback({type: 'insert', values: yreply.toArray()})
 
-  function replyCallback (contentID, optype, opval) {
+  function replyCallback (data) {
     self.onceReady(function () {
       mutualExcluse(function () {
+        var contentID = data.contentID
+        var optype = data.optype
+        var opval = data.opval
         var replydb = self.getFileByContentID(contentID)
         if (optype === 'insert') {
           var ridx = replydb.toArray().length
@@ -607,6 +609,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
     yCallback: yCallback,
     editorCallback: codeMirrorCallback,
     replydbID: replydbID,
+    reply: replyInstance,
     yReplyCallback: yReplyCallback,
     replyCallback: replyCallback
   }

@@ -44,6 +44,14 @@ FileSystem.prototype.mkfile = function (yfsnode) { // Makes an empty file
   return false
 }
 
+FileSystem.prototype.changeFileInfoSync = function (yfsnode) { // Makes an empty file
+  var self = this
+  if (self.existsBycontentID(yfsnode.contentID)) {
+    self.getFileByContentID(yfsnode.contentID).change(yfsnode)
+    return true
+  }
+  return false
+}
 FileSystem.prototype.changeDirInfoSync = function (yfsnode) { // Makes a directory
   var self = this
   if (self.existsBycontentID(yfsnode.contentID)) {
@@ -54,10 +62,11 @@ FileSystem.prototype.changeDirInfoSync = function (yfsnode) { // Makes a directo
   }
   return false
 }
-FileSystem.prototype.changeFileInfoSync = function (yfsnode) { // Makes an empty file
+FileSystem.prototype.changeFileInfo = function (path, newMeta) { // Makes an empty file
   var self = this
-  if (self.existsBycontentID(yfsnode.contentID)) {
-    self.getFileByContentID(yfsnode.contentID).change(yfsnode)
+  var node = self.getFileByPath(path)
+  if (node) {
+    node.change(newMeta)
     return true
   }
   return false
@@ -72,15 +81,6 @@ FileSystem.prototype.changeDirInfo = function (path, newMeta) { // Makes a direc
   }
   return false
 }
-FileSystem.prototype.changeFileInfo = function (path, newMeta) { // Makes an empty file
-  var self = this
-  var node = self.getFileByPath(path)
-  if (node) {
-    node.change(newMeta)
-    return true
-  }
-  return false
-}
 FileSystem.prototype.changeSubDirRecursive = function (parentPath, nodeList) { // Makes a directory
   var self = this
   nodeList.forEach(function (node) {
@@ -89,27 +89,9 @@ FileSystem.prototype.changeSubDirRecursive = function (parentPath, nodeList) { /
   })
 }
 
-FileSystem.prototype.getContained = function (path) {
-  var self = this
-
-  var dir = self.getFileByPath(path)
-  if (dir.type !== util.DIRECTORY_TYPE) return [dir]
-
-  var contained = []
-
-  dir.nodes.forEach(function (node) {
-    self.getContained(node.path).forEach(function (c) {
-      contained.push(c)
-    })
-  })
-
-  return contained
-}
-
 // Recursive node search with file path
 FileSystem.prototype.getFileByPath = function (path, nodeList) {
   var self = this
-  console.log('check ' + path)
   if (path === '@' || path === '') return self._tree
 
   nodeList = nodeList || self._tree.nodes
@@ -150,13 +132,31 @@ FileSystem.prototype.existsBycontentID = function (contentID) {
   return !!self.getFileByContentID(contentID)
 }
 
+// get all files on parentPath
+FileSystem.prototype.getSubFilesInPath = function (path) { // Makes a directory
+  var self = this
+  var node = self.getFileByPath(path)
+  var fileContainer = []
+  if (node) {
+    self.getSubFilesRecursive(node.path, node.nodes, fileContainer)
+  }
+  return fileContainer
+}
+FileSystem.prototype.getSubFilesRecursive = function (parentPath, nodeList, fileContainer) { // Makes a directory
+  var self = this
+  nodeList.forEach(function (node) {
+    fileContainer.push(node)
+    if (node.type === util.DIRECTORY_TYPE) self.getSubFilesRecursive(node.path, node.nodes, fileContainer)
+  })
+  return fileContainer
+}
+
 // Deletes a file/directory on a path
 FileSystem.prototype.delete = function (path) {
   var self = this
-  var parentPath = util.getParentPath(path)
-  var file = self.getFileByPath(parentPath)
-  if (file) {
-    file.nodes = file.nodes.filter(function (e) {
+  var parentFile = self.getFileByPath(util.getParentPath(path))
+  if (parentFile) {
+    parentFile.nodes = parentFile.nodes.filter(function (e) {
       if (e.path === path) return false
       return true
     })

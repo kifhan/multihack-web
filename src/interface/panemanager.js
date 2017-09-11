@@ -4,6 +4,7 @@ var split = require('split.js')
 var TabContainer = require('./tabcontainer')
 var HtmlViewer = require('../editor/htmlviewer')
 var lang = require('./lang/lang')
+var FileSystem = require('./../filesystem/filesystem')
 var lg = lang.get.bind(lang)
 
 inherits(PaneManager, EventEmitter)
@@ -57,7 +58,7 @@ function PaneManager (options) {
     self.changeView(event.view)
   })
   self.focusedPane.tabcontainer.on('close', function (event) {
-    self.closeView(event.view)
+    self.closeView(event.view, event.tab)
   })
 
   self.container.appendChild(self.focusedPane.dom)
@@ -71,7 +72,7 @@ PaneManager.prototype.isOnPane = function (filepath) {
   var checkview = false
   self.focusedPane.viewlist.forEach(function (view) {
     // console.log('check file exist: ' + filepath + ' ' + view.getWorkingFile().path)
-    if (view.getWorkingFile().path === filepath) { checkview = view }
+    if (view.getWorkingFile() === FileSystem.getFileByPath(filepath)) { checkview = view }
   }, this)
   return checkview
 }
@@ -112,15 +113,16 @@ PaneManager.prototype.changeView = function (view) {
 
   self.emit('viewChange', {view: view})
 }
-PaneManager.prototype.closeView = function (view) {
+PaneManager.prototype.closeView = function (view, tab) {
   var self = this
-  if (self.focusedPane.viewlist.indexOf(view) !== -1) {
-    var tempview = self.focusedPane.viewlist[self.focusedPane.viewlist.indexOf(view)]
+  var i = self.focusedPane.viewlist.indexOf(view)
+  if (i !== -1) {
+    var tempview = self.focusedPane.viewlist[i]
+    self.focusedPane.tabcontainer.closeTab(tempview.bindedTab)
+
     self.focusedPane.dom.removeChild(tempview.container)
-    self.focusedPane.viewlist.splice(self.focusedPane.viewlist.indexOf(view), 1)
+    self.focusedPane.viewlist.splice(i, 1)
     view.close()
-    // observe, bind 풀기
-    // editer close, distroy
     self.emit('closeview', {view: view})
     // switch vew
     if (self._lastview && self._lastview !== view) {

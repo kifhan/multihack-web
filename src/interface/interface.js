@@ -21,7 +21,7 @@ function Interface () {
     self.emit('openFile', e)
   })
 
-  self.treeview.on('removeDir', function (e) {
+  self.treeview.on('deleteDir', function (e) {
     self.emit('deleteDir', e)
   })
 

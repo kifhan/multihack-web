@@ -36,11 +36,15 @@ HtmlEditor.prototype.open = function (filePath, remote) {
 
   self._remote = remote
   if (remote && self._workingFile) self.dom.innerHTML = self._remote.yFSNodes.get(self._workingFile.contentID)
+
+  self._changeFileInfo = function () { self.bindedTab.rename(self._workingFile.name) }
+  self._workingFile.on('change', self._changeFileInfo)
 }
 HtmlEditor.prototype.close = function () {
   var self = this
   self.dom.innerHTML = ''
   self._remote = null
+  self._workingFile.removeListener('change', self._changeFileInfo)
   self._workingFile = null
 }
 HtmlEditor.prototype.getWorkingFile = function () {

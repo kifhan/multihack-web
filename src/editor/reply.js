@@ -22,13 +22,15 @@ function Reply (options) {
   self.timeticks = []
   self.timeouts = []
   self.contentID = options.contentID
+  if (!self.contentID) {
+    console.warn('Can\'t initiate reply instance!')
+  }
 
   self.setReplyPanel(self.cm)
 }
 
-Reply.prototype.setReplies = function (contentID, cm, replies) {
+Reply.prototype.setReplies = function (cm, replies) {
   var self = this
-  self.contentID = contentID
   self.reinputs = []
   self.cm = cm
   if (self.timeticks) {
