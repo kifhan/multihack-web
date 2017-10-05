@@ -6,11 +6,11 @@ function DropdownMenu () {
   self.tail = '-dropDown'
 
   // 이건 한번만 해주면 되는 일이라 여기로 빼 주었다.
-  window.onclick = function (event) {
+  window.addEventListener('click', function (event) {
     if (!event.target.classList.contains('dd-button') && self.activeDropdown.element) {
       self.activeDropdown.element.style.display = 'none'
     }
-  }
+  })
 }
 
 DropdownMenu.prototype.makeDropdownButton = function (parentElement) {

@@ -22792,6 +22792,7 @@ function diff_main(text1, text2, cursor_pos) {
   if (cursor_pos != null) {
     diffs = fix_cursor(diffs, cursor_pos);
   }
+  diffs = fix_emoji(diffs);
   return diffs;
 };
 
@@ -23381,7 +23382,46 @@ function fix_cursor (diffs, cursor_pos) {
       return diffs;
     }
   }
+}
 
+/*
+ * Check diff did not split surrogate pairs.
+ * Ex. [0, '\uD83D'], [-1, '\uDC36'], [1, '\uDC2F'] -> [-1, '\uD83D\uDC36'], [1, '\uD83D\uDC2F']
+ *     '\uD83D\uDC36' === '🐶', '\uD83D\uDC2F' === '🐯'
+ *
+ * @param {Array} diffs Array of diff tuples
+ * @return {Array} Array of diff tuples
+ */
+function fix_emoji (diffs) {
+  var compact = false;
+  var starts_with_pair_end = function(str) {
+    return str.charCodeAt(0) >= 0xDC00 && str.charCodeAt(0) <= 0xDFFF;
+  }
+  var ends_with_pair_start = function(str) {
+    return str.charCodeAt(str.length-1) >= 0xD800 && str.charCodeAt(str.length-1) <= 0xDBFF;
+  }
+  for (var i = 2; i < diffs.length; i += 1) {
+    if (diffs[i-2][0] === DIFF_EQUAL && ends_with_pair_start(diffs[i-2][1]) &&
+        diffs[i-1][0] === DIFF_DELETE && starts_with_pair_end(diffs[i-1][1]) &&
+        diffs[i][0] === DIFF_INSERT && starts_with_pair_end(diffs[i][1])) {
+      compact = true;
+
+      diffs[i-1][1] = diffs[i-2][1].slice(-1) + diffs[i-1][1];
+      diffs[i][1] = diffs[i-2][1].slice(-1) + diffs[i][1];
+
+      diffs[i-2][1] = diffs[i-2][1].slice(0, -1);
+    }
+  }
+  if (!compact) {
+    return diffs;
+  }
+  var fixed_diffs = [];
+  for (var i = 0; i < diffs.length; i += 1) {
+    if (diffs[i][1].length > 0) {
+      fixed_diffs.push(diffs[i]);
+    }
+  }
+  return fixed_diffs;
 }
 
 /*
@@ -43267,7 +43307,7 @@ Reply.prototype.addReplyInput = function (line, level, order) {
   self.removeReplyInput() // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
 
   level = typeof level === 'undefined' ? 0 : level
-  var instertorder = typeof order === 'undefined' ? 0 : order
+  var insertorder = typeof order === 'undefined' ? 0 : order
 
   var rcount = 0
   for (var i = 0; i < self.lineWidgets.length; i++) {
@@ -43293,19 +43333,30 @@ Reply.prototype.addReplyInput = function (line, level, order) {
     '<div class="reply-text-container" style="margin:0;padding-top:5px; vertical-align: top; display:inline-block;line-height:1.4;width: calc(100% - 60px);min-height:37px;">' +
     '<div class="reply-input-box" style="border:1px solid #aaa; background:#ffffff;">' +
     '<div id="reply-input-' + reply_id + '" class="reply-input-cell" style="padding:8px;color:#000;" contenteditable="true" data-placeholder="답글 달기 ..." tabindex="-1">' +
-    '</div></div></div></div>'
-    // 미리 작성한 html 템플레이트를 사용한다. https://thimbleprojects.org/mohawkduck/194618/
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>'
+  // 미리 작성한 html 템플레이트를 사용한다. https://thimbleprojects.org/mohawkduck/194618/
 
   function oarc () {
     var clickdom = document.getElementById('reply-input-' + reply_id)
     clickdom.addEventListener('keydown', self.onAddReply.bind(self, window.event, reply_id))
     // clickdom.addEventListener('focus', self.replyinputfocus.bind(window.event))
     clickdom.focus()
+    var removeInputWindow = function (event) {
+      if (!event.target.classList.contains('reply-input-cell')) {
+        self.removeReplyInput()
+        window.removeEventListener('click',removeInputWindow)
+      }
+    }
+    window.addEventListener('click', removeInputWindow)
   }
+
   self.timeouts.push(setTimeout(oarc, 100))
 
   if (order >= rcount) self.lineWidgets.push(self.cm.addLineWidget(line, replyinputdom))
-  else self.lineWidgets.push(self.cm.addLineWidget(line, replyinputdom, { insertAt: instertorder }))
+  else self.lineWidgets.push(self.cm.addLineWidget(line, replyinputdom, {insertAt: insertorder}))
 
   self.reinputs.push({
     // self.reinputs 배열에 새로 만든 댓글입력노드를 삽입한다.
@@ -43315,7 +43366,7 @@ Reply.prototype.addReplyInput = function (line, level, order) {
     reply_id: reply_id,
     insert_time: '',
     level: level,
-    order: instertorder,
+    order: insertorder,
     line_num: line,
     input_content: ''
   })
@@ -43373,7 +43424,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
 
   console.log('going to add reply: ' + reply_id)
   if (typeof reply_id === 'undefined') {
-    console.error('Cannot add reply of undefined: ' + self.contentID);
+    console.error('Cannot add reply of undefined: ' + self.contentID)
   }
 
   var replydom = document.createElement('DIV')
@@ -43390,6 +43441,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
     // '<a style="text-decoration:none;color:#365899;" href="#"><span>Like</span></a> · ' +
     // '<a id="reply-again-' + reply_id + '" style="text-decoration:none;color:#365899;" href="#"><span>Reply</span></a> · ' +
     '<a id="reply-remove-' + reply_id + '" style="text-decoration:none;color:#365899;" href="#"><span>Remove</span></a> · ' +
+    '<a id="reply-reply-' + reply_id + '" style="text-decoration:none;color:#365899;" href="#"><span>Reply</span></a> · ' +
     // '<a style="color:#888888;text-decoration:none;" href="#">'+
     '<span id="reply-time-' + reply_id + '" style="color:#888888;">Just now</span>' +
     // '</a>'+
@@ -43397,30 +43449,44 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
     '<div class="reply-button" style="color:#888888;float:right;visibility: hidden;">x</div></div>'
 
   var rcount = 0
-  for (var i = 0;i < self.lineWidgets.length;i++) {
+  for (var i = 0; i < self.lineWidgets.length; i++) {
     if (self.lineWidgets[i].node.getAttribute('id') === 'reply-' + reply_id) return
     if (self.cm.getLineNumber(self.lineWidgets[i].line) === replyobj.line_num) {
       rcount++
     }
   }
 
-  console.log('reply structure: ' + JSON.stringify(replyobj))
+  console.log('reply structure: ' , JSON.stringify(replyobj))
 
   // if (replyobj.order >= rcount) self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom))
   // else self.lineWidgets.push(self.cm.addLineWidget(replyobj.line_num, replydom, { insertAt: replyobj.order }))
   var widget = self.cm.addLineWidget(replyobj.line_num, replydom)
   self.lineWidgets.push(widget)
-  console.log('widget is: ' + widget)
+  console.log('widget is: ' , widget)
+  console.log('reply id: ' , 'reply-remove-' + reply_id)
 
   console.log('reply inserted at line: ' + replyobj.line_num + ' order: ' + replyobj.order + ' of total: ' + rcount)
-
   if (replyobj.user_id === User.user_id) { // 본인이 쓴 댓글만 지울 수 있다. remove 버튼도 본인에게만 보인다.
+
     var oarcd = function () {
       var clickdom = document.getElementById('reply-remove-' + reply_id)
-      clickdom.addEventListener('click', self.removeReply.bind(self, {'reply_id': reply_id,'user_id': replyobj.user_id,'user_request': User.user_id},false))
+      clickdom.addEventListener('click', self.removeReply.bind(self, {
+        'reply_id': reply_id,
+        'user_id': replyobj.user_id,
+        'user_request': User.user_id
+      }, false))
     }
-    self.timeouts.push(setTimeout(oarcd, 50))
+    self.timeouts.push(setTimeout(oarcd, 100))
   }
+  // 모두에게 reply 버튼이 보인다 모두 reply를 달 수 있다
+  var oarcd2 = function () {
+    var clickdom = document.getElementById('reply-reply-' + reply_id)
+
+    clickdom.addEventListener('click', function (event) {
+      self.addReplyInput(self.cm.getCursor().line)
+    })
+  }
+  self.timeouts.push(setTimeout(oarcd2, 100))
 
   function timecheck () {
     var replytime = document.getElementById('reply-time-' + reply_id)
@@ -43428,6 +43494,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
     var inittime = new Date(replyobj.insert_time)
     replytime.innerHTML = self.getTimeDifference(new Date(), inittime)
   }
+
   self.timeticks.push(setInterval(timecheck, 3000))
 
   if (!set_from_user) return // 외부 정보를 sync하는 경우.
@@ -44238,11 +44305,11 @@ function DropdownMenu () {
   self.tail = '-dropDown'
 
   // 이건 한번만 해주면 되는 일이라 여기로 빼 주었다.
-  window.onclick = function (event) {
+  window.addEventListener('click', function (event) {
     if (!event.target.classList.contains('dd-button') && self.activeDropdown.element) {
       self.activeDropdown.element.style.display = 'none'
     }
-  }
+  })
 }
 
 DropdownMenu.prototype.makeDropdownButton = function (parentElement) {
