@@ -50,7 +50,10 @@ function Multihack (config) {
     self.execWhenTargetSet(filenode.contentID, function () {
       if (filenode.type === 'text') {
         view = new CodeEditor()
-        var reply = new Reply({cm: view._cm, contentID: filenode.replydbID})
+        var reply = new Reply({
+          cm: view._cm,
+          contentID: filenode.replydbID
+        })
         view.open(e.path, self.netManager, reply)
         // setting an observer for document sync.
         // 실시간 문서 협업 동기화를 하려고 에디터에서 일어나는 액션을 감시한다. 문서와 문서안에 삽입되는 댓글을 감시한다.

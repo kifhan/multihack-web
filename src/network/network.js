@@ -155,6 +155,9 @@ NetworkManager.prototype.getFileByPath = function (filepath) {
 }
 NetworkManager.prototype.getFileByContentID = function (contentID) {
   var self = this
+  //console.log('in getFileByContentID!!!!!!' , self.yFSNodes.get('5s4td4q429t'))
+  //console.log(contentID)
+  //console.log(self.yFSNodes)
   return self.yFSNodes.get(contentID)
 }
 
@@ -222,16 +225,16 @@ NetworkManager.prototype.getReplyContent = function (contentID) {
       reply_id: reply.get('reply_id'),
       insert_time: reply.get('insert_time'),
       level: reply.get('level'),
-      order: reply.get('order'),
       line_num: reply.get('line_num'),
-      content: reply.get('content')
+      content: reply.get('content'),
+      parentId: reply.get('parentId')
     }
     replies.push(robj)
     debug('getReplyContent: ' + JSON.stringify(robj))
   }
   return replies
 }
-
+// 여기서 contentId, replyId가 배정된다
 NetworkManager.prototype.createFile = function (parentPath, filename, filetype, content) {
   var self = this
   self.onceReady(function () {
@@ -241,8 +244,10 @@ NetworkManager.prototype.createFile = function (parentPath, filename, filetype, 
       var replydbID = null
       if (filetype === 'text') { // text handled by codemirror
         replydbID = util.randomStr()
+        rereplydbID = util.randomStr()
         self.yFSNodes.set(contentID, Y.Text)
         self.yFSNodes.set(replydbID, Y.Array)
+        self.yFSNodes.set(rereplydbID, Y.Array)
         if (content) insertChunked(self.getFileByContentID(contentID), 0, content)
       } else if (filetype === 'quilljs') {
         replydbID = util.randomStr()
@@ -264,6 +269,7 @@ NetworkManager.prototype.createFile = function (parentPath, filename, filetype, 
         type: filetype,
         contentID: contentID,
         replydbID: replydbID,
+        rereplydbID: rereplydbID,
         parentPath: parentPath
       })
     })
@@ -409,6 +415,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   // this function makes sure that either the
   // codemirror event is executed, or the yjs observer is executed
   var token = true
+
   function mutualExcluse (f) {
     if (token) {
       token = false
@@ -451,6 +458,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       replyInstance.updateLineChange(cm, yreply)
     })
   }
+
   editorInstance.on('changes', codeMirrorCallback)
 
   function yCallback (event) {
@@ -465,10 +473,12 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       }
     })
   }
+
   ytext.observe(yCallback)
 
   // set Reply on CodeMirror
   replyInstance.setReplies(editorInstance, self.getReplyContent(replydbID))
+
   // yReplyCallback({type: 'insert', values: yreply.toArray()})
 
   function replyCallback (data) {
@@ -488,9 +498,10 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
           reply.set('reply_id', opval.reply_id)
           reply.set('insert_time', opval.insert_time)
           reply.set('level', opval.level)
-          reply.set('order', opval.order)
           reply.set('line_num', opval.line_num)
           reply.set('content', opval.content)
+          reply.set('parentId', opval.parentId)
+
           debug('reply sent by you: ' + replydb.get(ridx).keys())
         } else if (optype === 'delete') {
           for (var i = 0; i < replydb.toArray().length; i++) {
@@ -499,6 +510,26 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
               break
             }
           }
+          // 지워진 댓글의 자식 댓글들이 있다면 다 삭제한다
+          var index = 0
+          var rereplyCnt = opval.rereply_ids.length
+          var flag = false
+          while (replydb.toArray().length !== 0 || opval.rereply_ids.length !== 0) {
+            if (rereplyCnt === 0) break
+            flag = false
+            for (var j = 0, len = opval.rereply_ids.length; j < len; j++) {
+              console.log(replydb.get(index).get('reply_id'))
+              if ('reply-'+ replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
+                replydb.delete(index, 1)
+                index = 0
+                rereplyCnt--
+                flag = true
+                break
+              }
+            }
+            if(!flag) index++
+          }
+
         } else if (optype === 'update') {
           for (var j = 0; j < replydb.toArray().length; j++) {
             reply = replydb.get(j)
@@ -514,6 +545,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       })
     })
   }
+
   replyInstance.on('changeReply', replyCallback)
 
   function yReplyCallback (event) {
@@ -531,9 +563,9 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
               reply_id: reply.get('reply_id'),
               insert_time: reply.get('insert_time'),
               level: reply.get('level'),
-              order: reply.get('order'),
               line_num: reply.get('line_num'),
-              content: reply.get('content')
+              content: reply.get('content'),
+              parentId: reply.get('parentId')
             })
           }
         }, 50)
@@ -541,15 +573,17 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
         for (var i = 0; i < event.values.length; i++) {
           var reply = event.values[i]
           replyInstance.removeReply({
-            reply_id: reply.get('reply_id')
+            reply_id: reply.get('reply_id'),
+            line_num: reply.get('line_num')
           })
         }
-      // } else if (event.type === 'update') {
+        // } else if (event.type === 'update') {
         // TODO: add reply content update feature
         // maybe use observe deep
       }
     })
   }
+
   yreply.observe(yReplyCallback)
 
   self.observedInstances[contentID] = {
@@ -578,6 +612,7 @@ NetworkManager.prototype.bindQuill = function (contentID, quill) {
   // this function makes sure that either the
   // quill event is executed, or the yjs observer is executed
   var token = true
+
   function mutualExcluse (f) {
     if (token) {
       token = false
@@ -602,6 +637,7 @@ NetworkManager.prototype.bindQuill = function (contentID, quill) {
       yrichtext.applyDelta(delta, quill)
     })
   }
+
   // TODO: Investigate if 'editor-change' is more appropriate!
   quill.on('text-change', quillCallback)
 
@@ -676,7 +712,7 @@ NetworkManager.prototype.bindQuill = function (contentID, quill) {
             // create delta from vals
             var delta = []
             if (position > 0) {
-              delta.push({ retain: position })
+              delta.push({retain: position})
             }
             var currText = []
             vals.forEach(function (v) {
@@ -862,6 +898,7 @@ NetworkManager.prototype.bindQuill = function (contentID, quill) {
       quill.update()
     })
   }
+
   yrichtext.observe(yCallback)
 
   self.observedInstances[contentID] = {
