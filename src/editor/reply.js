@@ -10,8 +10,6 @@ function Reply (options) {
   var self = this
   if (!(self instanceof Reply)) return new Reply(options)
 
-  // line change시 이 리스트가 하던일을 바꿔줘야함
-  self.lineWidgets = null
   self.newLineWidgets = []
   // self.replies = undefined // Y-Array로 댓글 오브젝트를 저장하는 배열이다.
   // reply db를 연결할 때 - 반복문으로 댓글을 올린다.
@@ -54,7 +52,7 @@ Reply.prototype.setReplies = function (cm, replies) {
       for (var m = self.newLineWidgets[i].length - 1; m >= 0; m--) {
         self.removeReply({
           reply_id: self.newLineWidgets[i][m].node.getAttribute('id').replace('reply-', ''),
-          line_num: self.cm.getLineNumber(self.newLineWidgets[i][m].line)
+          line_num: self.newLineWidgets[i].line
         }, true)
       }
     }
@@ -69,7 +67,7 @@ Reply.prototype.setReplies = function (cm, replies) {
   console.log('Reply set init finished: ' + self.contentID)
 }
 
-Reply.prototype.updateLineChange = async function (cm, replies) {
+Reply.prototype.updateLineChange = function (cm, replies) {
   var self = this
   if (!self.newLineWidgets.length) return
   var changeobjs = []
@@ -77,12 +75,11 @@ Reply.prototype.updateLineChange = async function (cm, replies) {
   var chReplies = replies.toArray()
 
   for (var j = 0; j < self.newLineWidgets.length; j++) {
-    if(!self.newLineWidgets[j]) continue
+    if (!self.newLineWidgets[j]) continue
 
     var lineWidgetTree = self.newLineWidgets[j]
-    for (var p = 0, len = lineWidgetTree.length; p < len; p++){
-
-      if(!lineWidgetTree[p]) continue
+    for (var p = 0, len = lineWidgetTree.length; p < len; p++) {
+      if (!lineWidgetTree[p]) continue
 
       var widget = lineWidgetTree[p]
       var lineNum = self.cm.getLineNumber(widget.line)
@@ -91,6 +88,7 @@ Reply.prototype.updateLineChange = async function (cm, replies) {
         if (id === 'reply-' + replies.get(i).get('reply_id')) {
           if (lineNum !== replies.get(i).get('line_num')) {
             if (!lineNum) break
+            lineWidgetTree.line = lineNum
             changeobjs.push({
               reply_id: replies.get(i).get('reply_id'),
               line_num: lineNum
@@ -98,10 +96,9 @@ Reply.prototype.updateLineChange = async function (cm, replies) {
           }
         }
       }
+
       for (var k = 0; k < self.reinputs.length; k++) {
-        // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
         if (id === 'reply-input-container-' + self.reinputs[k].reply_id) {
-          // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
           if (lineNum !== self.reinputs[k].line_num) {
             self.reinputs[k].line_num = lineNum
           }
@@ -116,7 +113,7 @@ Reply.prototype.updateLineChange = async function (cm, replies) {
       contentID: self.contentID,
       optype: 'update',
       opval: {
-        changeobjs : changeobjs
+        changeobjs: changeobjs
         //reply_id: cobj.reply_id,
         //line_num: cobj.line_num
       }
@@ -125,15 +122,27 @@ Reply.prototype.updateLineChange = async function (cm, replies) {
 
 }
 
-Reply.prototype.addReplyInput = function (line, level, parentReplyId) {
+Reply.prototype.getLineWidgetTree = function (lineNum) {
   var self = this
+
+  for (var i = 0, len = self.newLineWidgets.length; i < len; i++) {
+    if (self.newLineWidgets[i].line === lineNum) {
+      return self.newLineWidgets[i]
+    }
+  }
+  var lineWidgetTree = []
+  lineWidgetTree.line = lineNum
+  self.newLineWidgets.push(lineWidgetTree)
+  return lineWidgetTree
+}
+
+Reply.prototype.addReplyInput = function (lineInfo, level, parentReplyId) {
+  var self = this
+  var line = typeof lineInfo !== 'object' ? lineInfo : self.cm.getLineNumber(lineInfo)
   self.removeReplyInput(line) // 댓글 입력 노드가 여러개 생기지 않도록 이전에 생성된 입력노드를 제거한다.
   console.log('in addReplyInput : ', level, parentReplyId)
-  if (!self.newLineWidgets[line]) {
-    self.newLineWidgets[line] = []
-  }
 
-  var lineWidgetTree = self.newLineWidgets[line]
+  var lineWidgetTree = self.getLineWidgetTree(line)
 
   // reply      { user_id, user_name, user_picture, reply_id, level, order, line_num, content }
   // replyInput { user_id, user_name, user_picture, reply_id, level, order, line_num, text_id }
@@ -176,15 +185,15 @@ Reply.prototype.addReplyInput = function (line, level, parentReplyId) {
 
     for (var i = 0, len = lineWidgetTree.length; i < len; i++) {
       if (lineWidgetTree[i].node.id === 'reply-' + parentReplyId) {
-        if (i === len - 1) lineWidgetTree.push(self.cm.addLineWidget(line, replyinputdom))
-        else lineWidgetTree.splice(i, 0, self.cm.addLineWidget(line, replyinputdom, {insertAt: i + 1}))
+        if (i === len - 1) lineWidgetTree.push(self.cm.addLineWidget(lineInfo, replyinputdom))
+        else lineWidgetTree.splice(i, 0, self.cm.addLineWidget(lineInfo, replyinputdom, {insertAt: i + 1}))
         break
       }
     }
 
-    if (len === 0) lineWidgetTree.push(self.cm.addLineWidget(line, replyinputdom))
+    if (len === 0) lineWidgetTree.push(self.cm.addLineWidget(lineInfo, replyinputdom))
   } else {
-    lineWidgetTree.push(self.cm.addLineWidget(line, replyinputdom))
+    lineWidgetTree.push(self.cm.addLineWidget(lineInfo, replyinputdom))
   }
 
   // 작성 후 엔터를 눌렀을 때의 이벤트 처리 및 input이 아닌 다른 곳을 눌렀을 경우에 input을 제거하는 이벤트 처리
@@ -195,7 +204,8 @@ Reply.prototype.addReplyInput = function (line, level, parentReplyId) {
     clickdom.focus()
     var removeInputWindow = function (event) {
       if (!event.target.classList.contains('reply-input-cell')) {
-        self.removeReplyInput(line)
+        var targetLine = typeof lineInfo !== 'object' ? lineInfo : self.cm.getLineNumber(lineInfo)
+        self.removeReplyInput(targetLine)
         window.removeEventListener('click', removeInputWindow)
       }
     }
@@ -263,7 +273,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
     console.error('Cannot add reply of undefined: ' + self.contentID)
   }
 
-  var lineWidgetTree = self.newLineWidgets[replyobj.line_num] || (self.newLineWidgets[replyobj.line_num] = [])
+  var lineWidgetTree = self.getLineWidgetTree(replyobj.line_num)
 
   var replydom = document.createElement('DIV')
   replydom.setAttribute('class', 'reply-box')
@@ -338,7 +348,8 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
 
       clickdom.addEventListener('click', function (event) {
         // 나중에 insert index랑 line num을 바로 넘겨주는 방식으로 개선 해 본다
-        self.addReplyInput(replyobj.line_num, 1, reply_id)
+        console.log('!!!!!!!!!!!!', typeof widget.line)
+        self.addReplyInput(widget.line, 1, reply_id)
       })
     }
     self.timeouts.push(setTimeout(oarcd2, 100))
@@ -353,7 +364,7 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
         'reply_id': reply_id,
         'user_id': replyobj.user_id,
         'user_request': User.user_id,
-        'line_num': replyobj.line_num
+        'lineObj': widget.line
       }, false))
     }
     // 50 에서 100으로 수정
@@ -370,9 +381,6 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
   self.timeticks.push(setInterval(timecheck, 3000))
 
   if (!set_from_user) return // 외부 정보를 sync하는 경우.
-
-  // 댓글입력노드를 하단에 삽입한다. 댓글입력노드가 2단계까지만 달리도록 고정한다.
-  // self.addReplyInput(replyobj.line_num, replyobj.level, replyobj.order + 1)
 
   self.emit('changeReply', {
     contentID: self.contentID,
@@ -412,15 +420,11 @@ Reply.prototype.getTimeDifference = function (current, previous) {
 Reply.prototype.removeReplyInput = function (line) {
   var self = this
   // self.reinputs 배열에 있는 댓글입력노드를 dom과 배열에서 제거한다.
-  // console.log("line widget count: " + self.lineWidgets.length)
-  if (!self.newLineWidgets[line]) {
-    self.newLineWidgets[line] = []
-  }
-  var lineWidgetTree = self.newLineWidgets[line]
+  var lineWidgetTree = self.getLineWidgetTree(line)
 
   for (var j = lineWidgetTree.length - 1; j >= 0; j--) {
     for (var i = 0; i < self.reinputs.length; ++i) {
-      // console.log('delete line widget: ' + self.cm.getLineNumber(self.lineWidgets[j].line) + ' ' + self.reinputs[i].line_num)
+
       if (lineWidgetTree[j].node.getAttribute('id') === 'reply-input-container-' + self.reinputs[i].reply_id) {
         self.cm.removeLineWidget(lineWidgetTree[j])
         lineWidgetTree.splice(j, 1)
@@ -440,7 +444,7 @@ Reply.prototype.removeReply = function (robj, dontsync) {
     }
   }
 
-  var lineWidgetTree = self.newLineWidgets[robj.line_num]
+  var lineWidgetTree = self.getLineWidgetTree(self.cm.getLineNumber(robj.lineObj))
 
   for (var j = lineWidgetTree.length - 1; j >= 0; j--) {
     if (lineWidgetTree[j].node.getAttribute('id') === 'reply-' + robj.reply_id) {
