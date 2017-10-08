@@ -45994,8 +45994,8 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       }
 
       // update reply line num
-      // 아래의 함수가 끝나고 이 함수가 token을 반환하는데 이때 아래 함수의 요청이 처리되지 않는다
-      // 따라서 이 함수가 끝나고 처리하도록 딜레이를 준다
+      // 아래의 함수가 끝나고 이 함수가 token을 반환하는데 이때 아래 함수가 얻는 token은 항상 false이다
+      // 따라서 이 함수가 token 반환 후에 아래 함수가 처리되도록 딜레이를 준다
       setTimeout(function () { replyInstance.updateLineChange(cm, yreply) }, 100)
     })
   }
