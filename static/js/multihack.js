@@ -43263,49 +43263,60 @@ Reply.prototype.setReplies = function (cm, replies) {
   console.log('Reply set init finished: ' + self.contentID)
 }
 
-Reply.prototype.updateLineChange = function (cm, replies) {
+Reply.prototype.updateLineChange = async function (cm, replies) {
   var self = this
-  if (!self.lineWidgets) return
+  if (!self.newLineWidgets.length) return
   var changeobjs = []
   if (typeof replies === 'undefined') return
   var chReplies = replies.toArray()
-  for (var j = 0; j < self.lineWidgets.length; j++) {
-    for (var i = 0; i < chReplies.length; i++) {
-      // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + repliesarray[i].reply_id)
-      if (self.lineWidgets[j].node.getAttribute('id') === 'reply-' + replies.get(i).get('reply_id')) {
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== replies.get(i).get('line_num')) {
-          // console.log("line_num needs to be change: " + replies.get(i).reply_id)
-          var newLineNum = self.cm.getLineNumber(self.lineWidgets[j].line)
-          if (!newLineNum) break
-          changeobjs.push({
-            reply_id: replies.get(i).get('reply_id'),
-            line_num: newLineNum
-          })
+
+  for (var j = 0; j < self.newLineWidgets.length; j++) {
+    if(!self.newLineWidgets[j]) continue
+
+    var lineWidgetTree = self.newLineWidgets[j]
+    for (var p = 0, len = lineWidgetTree.length; p < len; p++){
+
+      if(!lineWidgetTree[p]) continue
+
+      var widget = lineWidgetTree[p]
+      var lineNum = self.cm.getLineNumber(widget.line)
+      var id = widget.node.getAttribute('id')
+      for (var i = 0; i < chReplies.length; i++) {
+        if (id === 'reply-' + replies.get(i).get('reply_id')) {
+          if (lineNum !== replies.get(i).get('line_num')) {
+            if (!lineNum) break
+            changeobjs.push({
+              reply_id: replies.get(i).get('reply_id'),
+              line_num: lineNum
+            })
+          }
         }
       }
-    }
-    for (var k = 0; k < self.reinputs.length; k++) {
-      // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
-      if (self.lineWidgets[j].node.getAttribute('id') === 'reply-input-container-' + self.reinputs[k].reply_id) {
-        // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
-        if (self.cm.getLineNumber(self.lineWidgets[j].line) !== self.reinputs[k].line_num) {
-          self.reinputs[k].line_num = self.cm.getLineNumber(self.lineWidgets[j].line)
+      for (var k = 0; k < self.reinputs.length; k++) {
+        // console.log("compare " + self.lineWidgets[j].node.getAttribute("id") + " " + self.reinputs[k].reply_id)
+        if (id === 'reply-input-container-' + self.reinputs[k].reply_id) {
+          // console.log("compare" + self.cm.getLineNumber(self.lineWidgets[j].line) + " " + self.reinputs[k].line_num)
+          if (lineNum !== self.reinputs[k].line_num) {
+            self.reinputs[k].line_num = lineNum
+          }
         }
       }
+
     }
   }
-  if (changeobjs.length > 0) {
-    changeobjs.forEach(function (cobj) {
-      self.emit('changeReply', {
-        contentID: self.contentID,
-        optype: 'update',
-        opval: {
-          reply_id: cobj.reply_id,
-          line_num: cobj.line_num
-        }
-      })
-    })
-  }
+
+  if (changeobjs.length) {
+    self.emit('changeReply', {
+      contentID: self.contentID,
+      optype: 'update',
+      opval: {
+        changeobjs : changeobjs
+        //reply_id: cobj.reply_id,
+        //line_num: cobj.line_num
+      }
+    })// end emit
+  }// end if
+
 }
 
 Reply.prototype.addReplyInput = function (line, level, parentReplyId) {
@@ -45983,7 +45994,9 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       }
 
       // update reply line num
-      replyInstance.updateLineChange(cm, yreply)
+      // 아래의 함수가 끝나고 이 함수가 token을 반환하는데 이때 아래 함수의 요청이 처리되지 않는다
+      // 따라서 이 함수가 끝나고 처리하도록 딜레이를 준다
+      setTimeout(function () { replyInstance.updateLineChange(cm, yreply) }, 100)
     })
   }
 
@@ -46012,6 +46025,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   function replyCallback (data) {
     self.onceReady(function () {
       mutualExcluse(function () {
+
         var contentID = data.contentID
         var optype = data.optype
         var opval = data.opval
@@ -46047,7 +46061,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
             flag = false
             for (var j = 0, len = opval.rereply_ids.length; j < len; j++) {
               console.log(replydb.get(index).get('reply_id'))
-              if ('reply-'+ replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
+              if ('reply-' + replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
                 replydb.delete(index, 1)
                 index = 0
                 rereplyCnt--
@@ -46055,18 +46069,21 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
                 break
               }
             }
-            if(!flag) index++
+            if (!flag) index++
           }
 
         } else if (optype === 'update') {
           for (var j = 0; j < replydb.toArray().length; j++) {
             reply = replydb.get(j)
-            if (reply.get('reply_id') === opval.reply_id) {
-              if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
-              if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
-              if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
-              if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
-              break
+            for (var k = 0; k < opval.changeobjs.length; k++) {
+              var change = opval.changeobjs[k]
+              if (reply.get('reply_id') === change.reply_id) {
+                if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
+                if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
+                if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
+                if (typeof change.content !== 'undefined') reply.set('content', change.content)
+                break
+              }
             }
           }
         }
@@ -46108,6 +46125,24 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
         // } else if (event.type === 'update') {
         // TODO: add reply content update feature
         // maybe use observe deep
+      } else if (event.type === 'update') {
+        console.log('in yupdate!!!!!', event.values)
+        /*
+        for (var j = 0; j < replydb.toArray().length; j++) {
+          reply = replydb.get(j)
+          console.log(reply)
+          for (var k = 0; k < opval.changeobjs.length; k++) {
+            var change = opval.changeobjs[k]
+            if (reply.get('reply_id') === change.reply_id) {
+              if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
+              if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
+              if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
+              if (typeof change.content !== 'undefined') reply.set('content', change.content)
+              break
+            }
+          }
+        }
+        */
       }
     })
   }

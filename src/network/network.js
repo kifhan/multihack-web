@@ -455,7 +455,9 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       }
 
       // update reply line num
-      replyInstance.updateLineChange(cm, yreply)
+      // 아래의 함수가 끝나고 이 함수가 token을 반환하는데 이때 아래 함수의 요청이 처리되지 않는다
+      // 따라서 이 함수가 끝나고 token 반환 후에 처리하도록 딜레이를 준다
+      setTimeout(function () { replyInstance.updateLineChange(cm, yreply) }, 100)
     })
   }
 
@@ -484,6 +486,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   function replyCallback (data) {
     self.onceReady(function () {
       mutualExcluse(function () {
+
         var contentID = data.contentID
         var optype = data.optype
         var opval = data.opval
@@ -519,7 +522,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
             flag = false
             for (var j = 0, len = opval.rereply_ids.length; j < len; j++) {
               console.log(replydb.get(index).get('reply_id'))
-              if ('reply-'+ replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
+              if ('reply-' + replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
                 replydb.delete(index, 1)
                 index = 0
                 rereplyCnt--
@@ -527,18 +530,21 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
                 break
               }
             }
-            if(!flag) index++
+            if (!flag) index++
           }
 
         } else if (optype === 'update') {
           for (var j = 0; j < replydb.toArray().length; j++) {
             reply = replydb.get(j)
-            if (reply.get('reply_id') === opval.reply_id) {
-              if (typeof opval.line_num !== 'undefined') reply.set('line_num', opval.line_num)
-              if (typeof opval.user_name !== 'undefined') reply.set('user_name', opval.user_name)
-              if (typeof opval.user_picture !== 'undefined') reply.set('user_picture', opval.user_picture)
-              if (typeof opval.content !== 'undefined') reply.set('content', opval.content)
-              break
+            for (var k = 0; k < opval.changeobjs.length; k++) {
+              var change = opval.changeobjs[k]
+              if (reply.get('reply_id') === change.reply_id) {
+                if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
+                if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
+                if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
+                if (typeof change.content !== 'undefined') reply.set('content', change.content)
+                break
+              }
             }
           }
         }
@@ -580,6 +586,24 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
         // } else if (event.type === 'update') {
         // TODO: add reply content update feature
         // maybe use observe deep
+      } else if (event.type === 'update') {
+        console.log('in yupdate!!!!!', event.values)
+        /*
+        for (var j = 0; j < replydb.toArray().length; j++) {
+          reply = replydb.get(j)
+          console.log(reply)
+          for (var k = 0; k < opval.changeobjs.length; k++) {
+            var change = opval.changeobjs[k]
+            if (reply.get('reply_id') === change.reply_id) {
+              if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
+              if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
+              if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
+              if (typeof change.content !== 'undefined') reply.set('content', change.content)
+              break
+            }
+          }
+        }
+        */
       }
     })
   }
