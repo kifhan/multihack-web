@@ -43384,8 +43384,6 @@ Reply.prototype.addReplyInput = function (lineInfo, level, parentReplyId) {
         break
       }
     }
-
-    if (len === 0) lineWidgetTree.push(self.cm.addLineWidget(lineInfo, replyinputdom))
   } else {
     lineWidgetTree.push(self.cm.addLineWidget(lineInfo, replyinputdom))
   }
@@ -43542,7 +43540,6 @@ Reply.prototype.addReply = function (replyobj, set_from_user) {
 
       clickdom.addEventListener('click', function (event) {
         // 나중에 insert index랑 line num을 바로 넘겨주는 방식으로 개선 해 본다
-        console.log('!!!!!!!!!!!!', typeof widget.line)
         self.addReplyInput(widget.line, 1, reply_id)
       })
     }
@@ -43642,17 +43639,20 @@ Reply.prototype.removeReply = function (robj, dontsync) {
 
   for (var j = lineWidgetTree.length - 1; j >= 0; j--) {
     if (lineWidgetTree[j].node.getAttribute('id') === 'reply-' + robj.reply_id) {
-      self.cm.removeLineWidget(lineWidgetTree[j])
-
+      var level = lineWidgetTree[j]
       var rereply_ids = []
       var rereCnt = 0
-      for (var i = j + 1, len = lineWidgetTree.length; i < len; i++) {
 
-        if (lineWidgetTree[i].level === 1) {
-          rereply_ids.push(lineWidgetTree[i].node.id)
-          self.cm.removeLineWidget(lineWidgetTree[i])
-          rereCnt++
-        } else break
+      self.cm.removeLineWidget(lineWidgetTree[j])
+      if(level === 0){
+        for (var i = j + 1, len = lineWidgetTree.length; i < len; i++) {
+
+          if (lineWidgetTree[i].level === 1) {
+            rereply_ids.push(lineWidgetTree[i].node.id)
+            self.cm.removeLineWidget(lineWidgetTree[i])
+            rereCnt++
+          } else break
+        }
       }
 
       lineWidgetTree.splice(j, 1 + rereCnt)
