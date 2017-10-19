@@ -177,7 +177,7 @@ Interface.prototype.getProject = function (cb) {
     cb(input.files[0])
   })
 }
-
+// 이 부분을 room 목록을 보여주고 선택하는 것으로 바꿔주면 되겠다
 Interface.prototype.getRoom = function (roomID, cb) {
   var self = this
 
@@ -192,6 +192,30 @@ Interface.prototype.getRoom = function (roomID, cb) {
     // self.getNickname(e.inputs[0].value, cb)
 
     if (cb) cb({room: e.inputs[0].value})
+  })
+  roomModal.on('cancel', function () {
+    roomModal.close()
+    self.alertHTML(lg('offline_title'), lg('offline_alert'))
+  })
+  roomModal.open()
+}
+
+Interface.prototype.createRoom = function (postCallback, onRoom) {
+  var self = this
+  // 모달창을 만들고 나서 모달창을 감싸는 부분의 classname으로 만들면 이 안에 들어가는 것 같다
+
+  var roomModal = new Modal('createRoom', {
+    title: 'Create Room'
+  })
+  roomModal.on('done', function (e) {
+    //roomModal.close()
+    // self.getNickname(e.inputs[0].value, cb)
+    var output = {
+      roomName: e.inputs[0].value,
+      roomDiscription: e.inputs[1].value
+    }
+
+    postCallback(output,onRoom,roomModal)
   })
   roomModal.on('cancel', function () {
     roomModal.close()

@@ -45,7 +45,9 @@
     "join_leave_call": "Join/Leave Call",
     "leave_room": "Leave Room",
     "rename": "Modify file/foler name",
-    "ok" : "ok"
+    "ok" : "ok",
+    "project_name":"Project Name",
+    "description":"Description"
   },
   "ko": {
     "save_success_title": "저장 완료",
@@ -93,6 +95,8 @@
     "join_leave_call": "통화 시작/종료",
     "leave_room": "룸 나가기",
     "rename": "파일/폴더 이름 수정하기",
-    "ok" : "확인"
+    "ok" : "확인",
+    "project_name":"프로젝트 이름",
+    "description":"설명"
   }
 }

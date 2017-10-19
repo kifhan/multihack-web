@@ -452,7 +452,6 @@ Reply.prototype.removeReply = function (robj, dontsync) {
       self.cm.removeLineWidget(lineWidgetTree[j])
       if(level === 0){
         for (var i = j + 1, len = lineWidgetTree.length; i < len; i++) {
-
           if (lineWidgetTree[i].level === 1) {
             rereply_ids.push(lineWidgetTree[i].node.id)
             self.cm.removeLineWidget(lineWidgetTree[i])

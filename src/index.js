@@ -14,7 +14,7 @@ var lang = require('./interface/lang/lang')
 var lg = lang.get.bind(lang)
 var Reply = require('./editor/reply')
 var User = require('./auth/user')
-
+var RoomManager  = require('./network/roomMananger')
 // FileSystem is an virtual file system made with object(File, Folder) and array.
 // self.netManager is multihack-core. And it controls network and realtime document sync(CRDT).
 // for document sync, I use yjs module.
@@ -35,6 +35,7 @@ function Multihack (config) {
       if (target) f()
       else setTimeout(ft, 50)
     }
+
     ft()
   }
 
@@ -231,7 +232,6 @@ Multihack.prototype._initRemote = function (cb) {
       wrtc: null
     })
     // 네트워트 및 CRDT 협업 동기화 기능 모듈인 multihack-core를 시작한다.
-
     document.getElementById('voice').style.display = 'none'
     // 음성채팅 버튼을 보이게 한다.
     document.getElementById('network').style.display = 'none'
@@ -296,7 +296,10 @@ Multihack.prototype._initRemote = function (cb) {
   // Random starting room (to be changed) or from query
   if (!self.roomID && !self.embed) {
     // Interface.getRoom(Math.random().toString(36).substr(2), onRoom)
-    Interface.getRoom('rellat-otter-dev-v0.1', onRoom)
+    // 여기서 서버에서 room list를 받아와야겠다
+
+    //Interface.getRoom('rellat-otter-dev-v0.1', onRoom)
+    (new RoomManager()).openRoomView(Interface.createRoom,onRoom)
     // } else if (!self.embed) {
     //   Interface.getNickname(self.roomID, onRoom)
   } else {

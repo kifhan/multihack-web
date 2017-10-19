@@ -333,6 +333,22 @@ img ,
 .modal input[type="text"] {
   margin-bottom: 10px;
 }
+/*
+style for scroll
+ */
+.modal-list{
+    width:250px;
+    height: 100px;
+    padding:10px;
+    text-align:left;
+    display:inline-block;
+    overflow:auto;
+    list-style: none;
+}
+
+.modal-list ul{
+    list-style: none;
+}
 
 #network-graph {
   max-height: 300px;

@@ -29,7 +29,6 @@ Lang.prototype.get = function (key, data) {
   var self = this
 
   data = data || {}
-
   console.log(key)
   var lookup = translations[self.lang] || translations['en']
   return mustache.render(lookup[key] || translations['en'][key], data)

@@ -247,7 +247,6 @@ NetworkManager.prototype.createFile = function (parentPath, filename, filetype, 
         rereplydbID = util.randomStr()
         self.yFSNodes.set(contentID, Y.Text)
         self.yFSNodes.set(replydbID, Y.Array)
-        self.yFSNodes.set(rereplydbID, Y.Array)
         if (content) insertChunked(self.getFileByContentID(contentID), 0, content)
       } else if (filetype === 'quilljs') {
         replydbID = util.randomStr()
