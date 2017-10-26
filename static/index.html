@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+    <title>Rellat</title>
+    <link href="https://fonts.googleapis.com/css?family=Anonymous+Pro" rel="stylesheet">
+    <script src="https://use.fontawesome.com/21515b4647.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="/css/codemirror.css">
+    <link rel="stylesheet" href="/css/show-hint.css">
+    <link rel="stylesheet" href="/css/codemirror-themes/material.css">
+    <!--atom-->
+    <link rel="stylesheet" href="/css/codemirror-themes/atom.css">
+    <!--codepen -->
+    <!-- <link rel="stylesheet" href="/css/codemirror-themes/codepen.css"> -->
+    <!--brackets -->
+    <!-- <link rel="stylesheet" href="/css/codemirror-themes/brackets.css"> -->
+    <!-- Quill js -->
+    <link rel="stylesheet" href="//cdn.quilljs.com/1.2.4/quill.snow.css">
+    <!--<link rel="stylesheet" href="//cdn.quilljs.com/1.2.4/quill.bubble.css">-->
+    <!-- MultiHack -->
+    <link rel="stylesheet" href="/css/dropdownmenu/DropdownMenuStyle.css">
+    <link rel="stylesheet" href="/css/filetree/treestyles.css">
+    <link rel="stylesheet" href="/css/themes.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/roomStyle.css">
+    <link rel="stylesheet" href="/css/loginStyle.css">
+    <link rel="stylesheet" href="/css/chatStyle.css">
+    <link rel="stylesheet" href="/css/navStyle.css">
+    <link rel="stylesheet" href="/css/mainStyle.css">
+
+    <style>
+        .nav.theme-dark {
+            background: #6db40d;
+        }
+        .nav .logo {
+            margin-left: 10px;
+        }
+        #status-name {
+            vertical-align: middle;
+            height: 40px;
+            margin-right: 9px;
+        }
+        #fb-login-button {
+            float:right;margin-top:15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- nav -->
+    <nav class="nav-sidebar">
+        <div class="nav-header">
+            <div id="nav-profile" class="nav-profile-wrap">
+                <a class="nav-profile-icon" href="/"><img alt="nav-profile-icon" src="/img/rellat_logo_white.png" width="38px"></a>
+                <a class="nav-profile-text" href="/">Rellat</a>
+            </div>
+
+            <div class="nav-search">
+                <div class="search">
+                    <i class="material-icons">search</i>
+                    <input type="search" name="search" placeholder="Search">
+                </div>
+            </div>
+        </div>
+        <ul class="nav-categories ul-base">
+            <li><a target="_blank" href="/feed" style="margin-left:12px;">Social feed</a></li>
+            <li><a target="_blank" href="/chat" style="margin-left:12px;">Chat</a></li>
+            <li><a target="_blank" href="http://www.rellat.com" style="margin-left:12px;">Rellat Blog</a></li>
+            <li><a target="_blank" href="http://fb.me/rellatkr" style="margin-left:12px;">Rellat Team</a></li>
+        </ul>
+        <div class="copyright">
+            <span>&copy; 2017 Project <a href="http://www.rellat.com" class="link">Rellat</a></span>
+            <span>Developed by <a href="http://fb.me/rellatkr" target="_blank">Rellat Team</a></span>
+        </div>
+    </nav>
+    <!-- @end nav -->
+
+    <!-- header -->
+    <header id="content-header">
+        <div class="header-inner clearfix">
+            <div class="nav-btn nav-slider">
+                <i class="material-icons">menu</i>
+            </div>
+            <div class="header-logo">
+                <a target="_self" href="/">
+                    <div class="logo"><img src="/img/rellat_logo_white.png" height="38px"></div>
+                </a>
+            </div>
+            <div class="header-categories">
+                <ul class="ul-base">
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" href="#"><span>browse</span> <i class="material-icons">keyboard_arrow_down</i></a>
+                        <ul class="dropdown-menu ul-base">
+                            <li><a target="_blank" href="/feed" style="margin-left:12px;">Social feed</a></li>
+                            <li><a target="_blank" href="/chat" style="margin-left:12px;">Chat</a></li>
+                            <li><a target="_blank" href="http://www.rellat.com" style="margin-left:12px;">Rellat Blog</a></li>
+                            <li><a target="_blank" href="http://fb.me/rellatkr" style="margin-left:12px;">Rellat Team</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="header-search">
+                <div class="search">
+                    <i class="material-icons">search</i>
+                    <input type="search" name="search" placeholder="Search">
+                </div>
+            </div>
+            <div class="header-menu">
+                <ul class="ul-base">
+                    <li>
+                        <a id="header-chat" class="hide" title="chat" href="javascript:void(0)"><i class="material-icons">chat_bubble</i></a>
+                    </li>
+                    <li>
+                        <div id="header-profile"><a id="header-signin" href="javascript:void(0)">Sign in</a> / <a id="header-signup" href="javascript:void(0)">Sign up</a></div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+    <!-- @end header -->
+
+    <div id="content-body" class="body-container">
+    </div><!-- @end  #content-body -->
+
+    <div class="overlay-shadow"></div>
+</body>
+
+<!-- CodeMirror syntax -->
+<script src="/js/vendor/codemirror.js"></script>
+<script async src="/js/vendor/syntaxmodes/javascript.js"></script>
+<script async src="/js/vendor/syntaxmodes/css.js"></script>
+<script async src="/js/vendor/syntaxmodes/xml.js"></script>
+<script async src="/js/vendor/syntaxmodes/htmlmixed.js"></script>
+<script async src="/js/vendor/syntaxmodes/php.js"></script>
+
+<!-- CodeMirror addons -->
+<script async src="/js/vendor/addons/xml-fold.js"></script>
+<script async src="/js/vendor/addons/closebrackets.js"></script>
+<script async src="/js/vendor/addons/matchbrackets.js"></script>
+<script async src="/js/vendor/addons/closetag.js"></script>
+<script async src="/js/vendor/addons/matchtags.js"></script>
+<script async src="/js/vendor/addons/show-hint.js"></script>
+<script async src="/js/vendor/addons/xml-hint.js"></script>
+<script async src="/js/vendor/addons/javascript-hint.js"></script>
+<script async src="/js/vendor/addons/css-hint.js"></script>
+<script async src="/js/vendor/addons/xml-hint.js"></script>
+<script async src="/js/vendor/addons/html-hint.js"></script>
+<script async src="/js/vendor/addons/panel.js"></script>
+
+<!-- Quill js editor -->
+<script src="//cdn.quilljs.com/1.2.4/quill.js" charset="utf-8"></script>
+
+<!--For saving projects-->
+<!-- <script src="/js/vendor/jszip.min.js"></script> -->
+<!-- <script src="/js/vendor/FileSaver.min.js"></script> -->
+<!-- Socket.io -->
+<script src="/js/vendor/socket.io.js"></script>
+<!-- HyperHost -->
+<!-- <script src="/js/vendor/peer.js"></script> -->
+<!-- <script src="/js/vendor/hyperhost.js"></script> -->
+<!-- Core modules -->
+<script src="/js/app.js"></script>
+</html>

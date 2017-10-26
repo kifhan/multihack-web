@@ -17,12 +17,11 @@ function Lang () {
   self.lang = langLocale.split('-')[0]
   self.locale = langLocale.split('-')[1] // TODO: locale support
 
-
   // translate the DOM
-  document.querySelector('#save > span').innerHTML = self.get('save')
-  document.querySelector('#deploy > span').innerHTML = self.get('deploy')
-  document.querySelector('#voice > span').innerHTML = self.get('talk')
-  document.querySelector('#save > span').innerHTML = self.get('save')
+  // document.querySelector('#save > span').innerHTML = self.get('save')
+  // document.querySelector('#deploy > span').innerHTML = self.get('deploy')
+  // document.querySelector('#voice > span').innerHTML = self.get('talk')
+  // document.querySelector('#save > span').innerHTML = self.get('save')
 }
 
 Lang.prototype.get = function (key, data) {

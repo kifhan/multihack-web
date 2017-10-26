@@ -70,7 +70,7 @@ function CodeEditor (options) {
       self._cm.refresh()
     }
   }
-  setInterval(self._resizetimeout, 100)
+  setTimeout(self._resizetimeout, 100)
 }
 
 CodeEditor.prototype._onSelectionChange = function (cm, change) {

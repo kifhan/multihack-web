@@ -16,94 +16,6 @@
     /* others */
 }
 
-html,
-body {
-    font-family: Helvetica, Arial, sans-serif;;
-    padding: 0;
-    margin: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    font-size: 14px;
-    background: black;
-}
-
-/** {
-    font-family: Monaco;
-}*/
-
-.nav {
-    height: 60px;
-    position: fixed;
-    left: 0;
-    top: 0;
-    right: 0;
-    padding-right: 10px;
-    z-index: 1;
-}
-
-.embed .nav {
-  display: none;
-}
-
-.nav .logo {
-    color: white;
-    font-family: Helvetica, Arial, sans-serif;
-    margin-top: 10px;
-    margin-left: 30px;
-    font-size: 30px;
-    cursor: pointer;
-    float: left;
-}
-
-.nav .icon-button {
-    float: right;
-    margin-top: 15px;
-    position: relative;
-}
-
-.nav .icon-button span {
-    float: right;
-}
-
-.nav .icon-button img ~ span {
-    margin-left: 6px;
-}
-
-.nav .icon-button .tooltip {
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  text-align: center;
-  transition: opacity .3s ease-in-out;
-}
-
-.nav .icon-button .tooltip > span {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  background: #222222;
-  padding: 5px;
-  white-space: nowrap;
-  border: black 1px solid;
-}
-
-.nav .icon-button .tooltip > span:after {
-  width: 0; 
-  height: 0; 
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 5px solid black;
-  position: absolute;
-  right: 30px;
-  top: -5px;
-  content: "";
-}
-
 .noselect,
 .userlist *,
 .tree *,
@@ -135,9 +47,9 @@ img ,
 
 .sidebar {
     width: 150px;
-    position: fixed;
+    position: absolute;
     left: 0;
-    top: 60px;
+    top: 64px;
     bottom: 0px;
     z-index: 1;
     overflow: auto;
@@ -157,26 +69,28 @@ img ,
 }
 
 .panel-topbar {
-    height: 20px;
-    border-bottom: solid transparent 1px;
-    position: fixed;
-    top: 62px;
-    width: 142px;
+    height: 36px;
+    position: absolute;
+    top: 0;
+    width: 100%;
     left: 0;
     text-align: center;
-    padding: 5px;
+    padding: 8px 5px 5px;
 }
 
 .embed .panel-topbar {
   top: 2px;
 }
 
+#room {
+    font-weight: 200;
+}
 #root-plus {
   position: absolute;
   right: 3px;
   cursor: pointer;
   top: -1px;
-  padding: 5px;
+  padding: 10px;
   z-index: 10;
 }
 #root-plus:active {
@@ -204,8 +118,9 @@ img ,
 
 .workspace {
     position: fixed;
-    background: black;
-    top: 60px;
+    background: #222;
+    color: #eee;
+    top: 64px;
     left: 150px;
     right: 0;
     bottom: 0px;
@@ -328,6 +243,17 @@ img ,
     padding: 20px;
     max-height: 100%;
     overflow-y: auto;
+    color: #bbb;
+}
+
+.modal h1 {
+  font-size: 18px;
+  text-align: center;
+  padding: 0 0 12px;
+}
+
+.modal p {
+    font-size: 1rem;
 }
 
 .modal input[type="text"] {
@@ -452,6 +378,9 @@ input[type="text"].long {
 .CM-buttonsPanel .cm-reply {
     color: black;
 }
+.CM-buttonsPanel .cm-reply i {
+    color: #eee;
+}
 
 .cursor {
     position: fixed;
@@ -474,20 +403,20 @@ input[type="text"].long {
 
 /* Custom scrollbars */
 
-::-webkit-scrollbar {
+#content-body ::-webkit-scrollbar {
     width: 10px;
 }
 
-::-webkit-scrollbar-track {
-    border: solid 1px gray;
+#content-body ::-webkit-scrollbar-track {
+    border: none;
     border-radius: 0;
 }
 
-::-webkit-scrollbar-thumb {
+#content-body ::-webkit-scrollbar-thumb {
     border-radius: 0;
 }
 
-::-webkit-scrollbar-thumb:hover {
+#content-body ::-webkit-scrollbar-thumb:hover {
     border-radius: 0;
 }
 
@@ -551,7 +480,7 @@ span.mobile-hide{
 .tab-container {
     width: 100%;
     background: #555;
-    height: 32px;
+    height: 36px;
     overflow-x: hidden;
     overflow-y: hidden;
 }
@@ -561,7 +490,7 @@ span.mobile-hide{
     overflow: hidden;
     padding: 8px 1px 0 12px;
     background: #666;
-    height: 24px;
+    height: 36px;
     cursor: pointer;
     margin-right: 1px;
 }
@@ -569,7 +498,7 @@ span.mobile-hide{
     margin-right: 5px;
 }
 .tab-container .tab.active {
-    background: #333;
+    background: #444;
 }
 .tab-container .tab .close {
     float: right;
@@ -616,6 +545,108 @@ span.mobile-hide{
     font-weight: 400;
 }
 
+/*
+ * Code editor Reply
+*/
+.reply-container {
+    width: calc(100% - 6px);
+}
+
+.reply-toggle-check {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  cursor: pointer;
+}
+.reply-toggle-check:after {
+  content: "";
+  padding: 10px;
+  position: absolute;
+  left: -10px;
+  top: -10px;
+}
+input.reply-toggle-check~ol {
+  display: none;
+}
+
+input.reply-toggle-check:checked~ol {
+  display: block;
+  height: auto;
+}
+
+.reply-toggle-btn, .reply-toggle-btn:hover {
+    color: #eee;
+}
+
+.reply-container input.reply-toggle-check~.reply-toggle-btn i:after {
+  content: "chat_bubble_outline";
+}
+.reply-container input.reply-toggle-check:checked~.reply-toggle-btn i:after {
+  content: "chat_bubble";
+}
+
+.reply .reply-toggle-btn i {
+    font-size: 16px;
+}
+.reply input.reply-toggle-check~.reply-toggle-btn i:after {
+  content: "subdirectory_arrow_right";
+}
+.reply input.reply-toggle-check:checked~.reply-toggle-btn i:after {
+  content: "keyboard_arrow_up";
+}
+
+.reply-input-box, .reply {
+    width: calc(100% - 14px);
+    background: #fff;
+    padding: 6px 6px;
+    overflow-x: hidden;
+}
+.reply-input-box div {
+    display: inline-block;
+}
+.reply-img {
+    display: inline-block;
+    width: 32px;
+    margin-right: 5px;
+    padding: 0;
+}
+.reply-inputtextarea-box {
+    width: calc(100% - 32px - 5px);
+}
+.reply-input-textarea {
+    width: calc(100% - 12px);
+    padding: 5px 5px;
+}
+.reply-text-container {
+    width: calc(100% - 32px - 5px);    
+}
+
+.reply-list .reply {
+    border-bottom: 1px #365899aa solid;
+}
+.reply-list .reply:last-child {
+    border-bottom: none;
+}
+
+.reply-text-container {
+    margin:0;
+    padding-top:5px;
+    vertical-align: top;
+    display: inline-block;
+    line-height:1.4;
+    /* max-width: calc(100% - 60px); */
+    word-wrap:break-word;
+}
+.reply-text-container a, .reply a {
+    color:#365899;
+    margin-right:5px;
+}
+.reply-text-container a:hover, .reply a:hover {
+    color:#3264c0;
+}
+.reply-text-container a {
+  font-weight: bold;
+}
+
 /* Custom, iPhone Retina */
 @media only screen and (max-width: 480px) {
     .modal {
@@ -644,9 +675,6 @@ span.mobile-hide{
     .sidebar {
       width: 340px;
     }
-    .sidebar .panel-topbar {
-        width: 330px;
-    }
     .icon-collapse > span{
         display: inline-block;
     }
@@ -654,13 +682,3 @@ span.mobile-hide{
         display: inline-block;
     }
 }
-
-
-/* Medium Devices, Desktops */
-
-@media only screen and (min-width: 992px) {}
-
-
-/* Large Devices, Wide Screens */
-
-@media only screen and (min-width: 1200px) {}

@@ -155,9 +155,6 @@ NetworkManager.prototype.getFileByPath = function (filepath) {
 }
 NetworkManager.prototype.getFileByContentID = function (contentID) {
   var self = this
-  //console.log('in getFileByContentID!!!!!!' , self.yFSNodes.get('5s4td4q429t'))
-  //console.log(contentID)
-  //console.log(self.yFSNodes)
   return self.yFSNodes.get(contentID)
 }
 
@@ -224,10 +221,8 @@ NetworkManager.prototype.getReplyContent = function (contentID) {
       user_picture: reply.get('user_picture'),
       reply_id: reply.get('reply_id'),
       insert_time: reply.get('insert_time'),
-      level: reply.get('level'),
-      line_num: reply.get('line_num'),
-      content: reply.get('content'),
-      parentId: reply.get('parentId')
+      reply_at: reply.get('reply_at'),
+      content: reply.get('content')
     }
     replies.push(robj)
     debug('getReplyContent: ' + JSON.stringify(robj))
@@ -244,7 +239,6 @@ NetworkManager.prototype.createFile = function (parentPath, filename, filetype, 
       var replydbID = null
       if (filetype === 'text') { // text handled by codemirror
         replydbID = util.randomStr()
-        rereplydbID = util.randomStr()
         self.yFSNodes.set(contentID, Y.Text)
         self.yFSNodes.set(replydbID, Y.Array)
         if (content) insertChunked(self.getFileByContentID(contentID), 0, content)
@@ -268,7 +262,6 @@ NetworkManager.prototype.createFile = function (parentPath, filename, filetype, 
         type: filetype,
         contentID: contentID,
         replydbID: replydbID,
-        rereplydbID: rereplydbID,
         parentPath: parentPath
       })
     })
@@ -456,7 +449,7 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
       // update reply line num
       // 아래의 함수가 끝나고 이 함수가 token을 반환하는데 이때 아래 함수가 얻는 token은 항상 false이다
       // 따라서 이 함수가 token 반환 후에 아래 함수가 처리되도록 딜레이를 준다
-      setTimeout(function () { replyInstance.updateLineChange(cm, yreply) }, 100)
+      setTimeout(function () { replyInstance.updateLineChange(cm, yreply) }, 0)
     })
   }
 
@@ -480,12 +473,9 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
   // set Reply on CodeMirror
   replyInstance.setReplies(editorInstance, self.getReplyContent(replydbID))
 
-  // yReplyCallback({type: 'insert', values: yreply.toArray()})
-
   function replyCallback (data) {
     self.onceReady(function () {
       mutualExcluse(function () {
-
         var contentID = data.contentID
         var optype = data.optype
         var opval = data.opval
@@ -499,10 +489,8 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
           reply.set('user_picture', opval.user_picture)
           reply.set('reply_id', opval.reply_id)
           reply.set('insert_time', opval.insert_time)
-          reply.set('level', opval.level)
-          reply.set('line_num', opval.line_num)
+          reply.set('reply_at', opval.reply_at)
           reply.set('content', opval.content)
-          reply.set('parentId', opval.parentId)
 
           debug('reply sent by you: ' + replydb.get(ridx).keys())
         } else if (optype === 'delete') {
@@ -512,33 +500,14 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
               break
             }
           }
-          // 지워진 댓글의 자식 댓글들이 있다면 다 삭제한다
-          var index = 0
-          var rereplyCnt = opval.rereply_ids.length
-          var flag = false
-          while (replydb.toArray().length !== 0 || opval.rereply_ids.length !== 0) {
-            if (rereplyCnt === 0) break
-            flag = false
-            for (var j = 0, len = opval.rereply_ids.length; j < len; j++) {
-              console.log(replydb.get(index).get('reply_id'))
-              if ('reply-' + replydb.get(index).get('reply_id') === opval.rereply_ids[j]) {
-                replydb.delete(index, 1)
-                index = 0
-                rereplyCnt--
-                flag = true
-                break
-              }
-            }
-            if (!flag) index++
-          }
-
+          // TODO: 댓글 삭제하지 않고 숨기는 명령 추가하기
         } else if (optype === 'update') {
           for (var j = 0; j < replydb.toArray().length; j++) {
             reply = replydb.get(j)
-            for (var k = 0; k < opval.changeobjs.length; k++) {
-              var change = opval.changeobjs[k]
+            for (var k = 0; k < opval.changedObjs.length; k++) {
+              var change = opval.changedObjs[k]
               if (reply.get('reply_id') === change.reply_id) {
-                if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
+                if (typeof change.reply_at !== 'undefined') reply.set('reply_at', change.reply_at)
                 if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
                 if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
                 if (typeof change.content !== 'undefined') reply.set('content', change.content)
@@ -567,10 +536,8 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
               user_picture: reply.get('user_picture'),
               reply_id: reply.get('reply_id'),
               insert_time: reply.get('insert_time'),
-              level: reply.get('level'),
-              line_num: reply.get('line_num'),
-              content: reply.get('content'),
-              parentId: reply.get('parentId')
+              reply_at: reply.get('reply_at'),
+              content: reply.get('content')
             })
           }
         }, 50)
@@ -579,30 +546,27 @@ NetworkManager.prototype.bindCodeMirror = function (contentID, editorInstance, r
           var reply = event.values[i]
           replyInstance.removeReply({
             reply_id: reply.get('reply_id'),
-            line_num: reply.get('line_num')
+            reply_at: reply.get('reply_at')
           })
         }
-        // } else if (event.type === 'update') {
+      } else if (event.type === 'update') {
         // TODO: add reply content update feature
         // maybe use observe deep
-      } else if (event.type === 'update') {
-        console.log('in yupdate!!!!!', event.values)
-        /*
-        for (var j = 0; j < replydb.toArray().length; j++) {
-          reply = replydb.get(j)
-          console.log(reply)
-          for (var k = 0; k < opval.changeobjs.length; k++) {
-            var change = opval.changeobjs[k]
-            if (reply.get('reply_id') === change.reply_id) {
-              if (typeof change.line_num !== 'undefined') reply.set('line_num', change.line_num)
-              if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
-              if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
-              if (typeof change.content !== 'undefined') reply.set('content', change.content)
-              break
-            }
-          }
-        }
-        */
+        console.log('reply update in yReplyCallback!', event.values)
+        // for (var j = 0; j < replydb.toArray().length; j++) {
+        //   reply = replydb.get(j)
+        //   console.log(reply)
+        //   for (var k = 0; k < opval.changedObjs.length; k++) {
+        //     var change = opval.changedObjs[k]
+        //     if (reply.get('reply_id') === change.reply_id) {
+        //       if (typeof change.reply_at !== 'undefined') reply.set('reply_at', change.reply_at)
+        //       if (typeof change.user_name !== 'undefined') reply.set('user_name', change.user_name)
+        //       if (typeof change.user_picture !== 'undefined') reply.set('user_picture', change.user_picture)
+        //       if (typeof change.content !== 'undefined') reply.set('content', change.content)
+        //       break
+        //     }
+        //   }
+        // }
       }
     })
   }

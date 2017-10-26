@@ -6,8 +6,8 @@ var PeerGraph = require('p2p-graph')
 var cuid = require('cuid')
 var PaneManager = require('./panemanager')
 var lang = require('./lang/lang')
-// var split = require('split.js')
 var lg = lang.get.bind(lang)
+// var split = require('split.js')
 
 inherits(Interface, EventEmitter)
 
@@ -62,28 +62,28 @@ function Interface () {
   // document.getElementById('image-contrast').addEventListener('click', function () {
   //   contrast = !contrast
   //   document.querySelector('.image-wrapper').style.backgroundColor = contrast ? 'white' : 'black'
-  //   document.querySelector('#image-contrast > img').src = contrast ? 'static/img/contrast-black.png' : 'static/img/contrast-white.png'
+  //   document.querySelector('#image-contrast > img').src = contrast ? '/img/contrast-black.png' : '/img/contrast-white.png'
   // })
 
-  // Setup save button
-  document.getElementById('save').addEventListener('click', function () {
-    self.emit('saveAs', 'zip')
-  })
+  // // Setup save button
+  // document.getElementById('save').addEventListener('click', function () {
+  //   self.emit('saveAs', 'zip')
+  // })
 
-  // Setup voice button
-  document.getElementById('voice').addEventListener('click', function () {
-    self.emit('voiceToggle')
-  })
+  // // Setup voice button
+  // document.getElementById('voice').addEventListener('click', function () {
+  //   self.emit('voiceToggle')
+  // })
 
-  // Setup deploy button
-  document.getElementById('deploy').addEventListener('click', function () {
-    self.emit('deploy')
-  })
+  // // Setup deploy button
+  // document.getElementById('deploy').addEventListener('click', function () {
+  //   self.emit('deploy')
+  // })
 
-  // Network button
-  document.getElementById('network').addEventListener('click', function () {
-    self.emit('showNetwork')
-  })
+  // // Network button
+  // document.getElementById('network').addEventListener('click', function () {
+  //   self.emit('showNetwork')
+  // })
 
   // Setup delete button
   // document.getElementById('delete').addEventListener('click', function () {
@@ -208,14 +208,14 @@ Interface.prototype.createRoom = function (postCallback, onRoom) {
     title: 'Create Room'
   })
   roomModal.on('done', function (e) {
-    //roomModal.close()
+    // roomModal.close()
     // self.getNickname(e.inputs[0].value, cb)
     var output = {
       roomName: e.inputs[0].value,
       roomDiscription: e.inputs[1].value
     }
 
-    postCallback(output,onRoom,roomModal)
+    postCallback(output, onRoom, roomModal)
   })
   roomModal.on('cancel', function () {
     roomModal.close()

@@ -79,6 +79,7 @@ TreeView.prototype.addFile = function (parentElement, file) {
 
   var a = document.createElement('a')
   a.className = 'filelink tree_label'
+  a.href = 'javascript:void(0)'
   a.id = file.path
   a.innerHTML = file.name
   a.addEventListener('click', function (e) {

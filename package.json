@@ -18,9 +18,8 @@
   },
   "scripts": {
     "test": "standard --fix src/** && standard --fix test/** && tape test/*.js",
-    "build": "browserify src/index.js -s Multihack -o static/js/multihack.js",
-    "build-babel": "browserify src/index.js -s Multihack -o static/js/multihack.js -t [ babelify --presets [ es2015 ] ]",
-    "watch": "watchify src/index.js -s Multihack -o static/js/multihack.js"
+    "build": "browserify src/index.js -o static/js/app.js",
+    "watch": "watchify src/index.js -o static/js/app.js"
   },
   "author": "Chase Lee",
   "license": "MIT",

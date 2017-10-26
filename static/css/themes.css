@@ -1,17 +1,17 @@
 /* Atom-inspired theme */
 .theme-atom .theme-dark{
     background: #222222;
-    border: 1px black solid;
+    color: #eee;
 }
 
 .theme-atom .theme-mid{
     background: #292c2f;
-    border: 1px black solid;
+    color: #eee;
 }
 
 .theme-atom .theme-light{
     background: #303030;
-    border: 1px black solid;
+    color: #eee;
 }
 
 .theme-atom .theme-font-primary{

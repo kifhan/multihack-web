@@ -196,8 +196,29 @@ FileSystem.prototype._buildPath = function (path) {
 // Returns the useable part of the tree
 FileSystem.prototype.getTree = function () {
   var self = this
-  // console.log('track node sync ' + JSON.stringify(self._tree))
+
+  // sort file tree
+  nodeSortRecursive(self._tree.nodes, 'asc')
+
   return self._tree.nodes
+}
+
+function nodeSortRecursive (nodes, order) {
+  order = (order === 'asc') ? order : 'desc'
+  nodes.sort(function (a, b) {
+    // Compare the 2 dates
+    if (order === 'asc') {
+      if (a.path < b.path) return -1
+      if (a.path > b.path) return 1
+    } else {
+      if (a.path > b.path) return -1
+      if (a.path < b.path) return 1
+    }
+    return 0
+  })
+  nodes.forEach(function (node) {
+    if (node.type === util.DIRECTORY_TYPE) nodeSortRecursive(node.nodes, order)
+  })
 }
 
 module.exports = new FileSystem()

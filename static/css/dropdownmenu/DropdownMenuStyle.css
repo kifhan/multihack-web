@@ -50,7 +50,7 @@
     box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.1);
     background-color: #ffffff;
     list-style-type: none;
-    z-index: 999998;
+    z-index: 998;
     color: black;
     margin-left: -80px;
 }
@@ -64,7 +64,7 @@
 
 .dd-menu li:hover {
     background-color: #6db40d;
-    z-index: 999999;
+    z-index: 999;
 }
 
 .dd-menu li a {
