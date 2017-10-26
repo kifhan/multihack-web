@@ -108836,7 +108836,7 @@ var util = require('./filesystem/util')
 var RoomManager = require('./interface/roomMananger')
 var ChatApp = require('./interface/chat')
 
-var LOGIN_SERVER = window.location.protocol + '//' + '127.0.0.1:3000'
+var LOGIN_SERVER = window.location.protocol + '//' + 'i.rellat.com'
 
 var loginHeader = new SiteHeader({
   loginCheck: pageInit,
